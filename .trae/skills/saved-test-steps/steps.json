@@ -1,0 +1,199 @@
+{
+  "steps": [
+    {
+      "id": "example-github-navigate",
+      "name": "Navigate to GitHub",
+      "description": "Navigate to GitHub homepage",
+      "createdAt": "2024-01-15T10:00:00Z",
+      "lastUsed": "2024-01-15T10:00:00Z",
+      "useCount": 0,
+      "steps": [
+        {
+          "type": "navigate",
+          "url": "https://github.com"
+        }
+      ],
+      "tags": [
+        "github",
+        "navigation",
+        "example"
+      ],
+      "variables": [],
+      "goal": "Navigate to GitHub homepage"
+    },
+    {
+      "id": "example-google-search",
+      "name": "Google Search",
+      "description": "Perform a search on Google",
+      "createdAt": "2024-01-15T10:00:00Z",
+      "lastUsed": "2024-01-15T10:00:00Z",
+      "useCount": 0,
+      "steps": [
+        {
+          "type": "navigate",
+          "url": "https://www.google.com"
+        },
+        {
+          "type": "type",
+          "selector": "input[name='q']",
+          "text": "${searchQuery}"
+        },
+        {
+          "type": "press",
+          "key": "Enter"
+        }
+      ],
+      "tags": [
+        "google",
+        "search",
+        "example"
+      ],
+      "variables": [
+        "searchQuery"
+      ],
+      "goal": "Search on Google"
+    },
+    {
+      "id": "example-screenshot",
+      "name": "Take Screenshot",
+      "description": "Take a screenshot of the current page",
+      "createdAt": "2024-01-15T10:00:00Z",
+      "lastUsed": "2024-01-15T10:00:00Z",
+      "useCount": 0,
+      "steps": [
+        {
+          "type": "screenshot",
+          "name": "page-screenshot"
+        }
+      ],
+      "tags": [
+        "screenshot",
+        "utility",
+        "example"
+      ],
+      "variables": [],
+      "goal": "Take a screenshot"
+    },
+    {
+      "id": "step-1779114722335-ec5qk5ufr",
+      "name": "Step 1",
+      "description": "导航到百度首页 https://www.baidu.com",
+      "createdAt": "2026-05-18T14:32:02.335Z",
+      "lastUsed": "2026-05-18T14:32:02.335Z",
+      "useCount": 0,
+      "steps": [
+        {
+          "type": "navigate",
+          "url": "https://www.baidu.com"
+        }
+      ],
+      "tags": [
+        "dynamic",
+        "auto-saved"
+      ],
+      "variables": [],
+      "goal": "进入https://www.baidu.com并输入假面骑士并点击搜索，并点击第一个搜索结果"
+    },
+    {
+      "id": "step-1779114726173-l38khq3n6",
+      "name": "Step 2",
+      "description": "输入搜索关键词'假面骑士'到百度搜索框",
+      "createdAt": "2026-05-18T14:32:06.173Z",
+      "lastUsed": "2026-05-18T14:32:06.173Z",
+      "useCount": 0,
+      "steps": [
+        {
+          "type": "type",
+          "selector": "#kw",
+          "text": "假面骑士"
+        }
+      ],
+      "tags": [
+        "dynamic",
+        "auto-saved"
+      ],
+      "variables": [],
+      "goal": "进入https://www.baidu.com并输入假面骑士并点击搜索，并点击第一个搜索结果"
+    },
+    {
+      "id": "step-1779114733107-h8zumvqni",
+      "name": "Step 3",
+      "description": "点击百度搜索按钮",
+      "createdAt": "2026-05-18T14:32:13.107Z",
+      "lastUsed": "2026-05-18T14:32:13.107Z",
+      "useCount": 0,
+      "steps": [
+        {
+          "type": "click",
+          "selector": "#su"
+        }
+      ],
+      "tags": [
+        "dynamic",
+        "auto-saved"
+      ],
+      "variables": [],
+      "goal": "进入https://www.baidu.com并输入假面骑士并点击搜索，并点击第一个搜索结果"
+    },
+    {
+      "id": "step-1779114743071-kkwqb05tf",
+      "name": "Step 4",
+      "description": "等待搜索结果标题元素加载完成",
+      "createdAt": "2026-05-18T14:32:23.071Z",
+      "lastUsed": "2026-05-18T14:32:23.071Z",
+      "useCount": 0,
+      "steps": [
+        {
+          "type": "wait",
+          "selector": "h3.c-title"
+        }
+      ],
+      "tags": [
+        "dynamic",
+        "auto-saved"
+      ],
+      "variables": [],
+      "goal": "进入https://www.baidu.com并输入假面骑士并点击搜索，并点击第一个搜索结果"
+    },
+    {
+      "id": "step-1779114761289-2prcalny2",
+      "name": "Step 5",
+      "description": "向下滚动页面以查找和查看搜索结果列表",
+      "createdAt": "2026-05-18T14:32:41.289Z",
+      "lastUsed": "2026-05-18T14:32:41.289Z",
+      "useCount": 0,
+      "steps": [
+        {
+          "type": "scroll",
+          "selector": "body"
+        }
+      ],
+      "tags": [
+        "dynamic",
+        "auto-saved"
+      ],
+      "variables": [],
+      "goal": "进入https://www.baidu.com并输入假面骑士并点击搜索，并点击第一个搜索结果"
+    },
+    {
+      "id": "step-1779114923129-i1n705u89",
+      "name": "Step 11",
+      "description": "点击第一个搜索结果链接，使用XPath选择器精确定位标题锚点",
+      "createdAt": "2026-05-18T14:35:23.129Z",
+      "lastUsed": "2026-05-18T14:35:23.129Z",
+      "useCount": 0,
+      "steps": [
+        {
+          "type": "click",
+          "selector": "(//a[@data-module='title' and contains(@href, 'baidu.com/link')])[1]"
+        }
+      ],
+      "tags": [
+        "dynamic",
+        "auto-saved"
+      ],
+      "variables": [],
+      "goal": "进入https://www.baidu.com并输入假面骑士并点击搜索，并点击第一个搜索结果"
+    }
+  ]
+}

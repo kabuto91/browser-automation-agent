@@ -1,0 +1,100 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { BrowserManager } from '@/browser/browserManager';
+import { DynamicExecutor } from '@/agent/dynamicExecutor';
+import { LLMClient } from '@/llm/llmClient';
+
+export const maxDuration = 300;
+
+export async function POST(request: NextRequest) {
+  try {
+    const { goal, headless = true } = await request.json();
+
+    if (!goal || typeof goal !== 'string') {
+      return NextResponse.json(
+        { error: 'Test goal is required' },
+        { status: 400 }
+      );
+    }
+
+    const browserManager = new BrowserManager();
+    const llm = new LLMClient();
+
+    const page = await browserManager.launch(headless);
+    const executor = new DynamicExecutor(page, llm);
+
+    const logs: string[] = [];
+    const stepDetails: any[] = [];
+
+    const onStepStart = (step: any, index: number) => {
+      const log = `Step ${index + 1}: ${step.description}`;
+      logs.push(log);
+      console.log(`[Dynamic] ${log}`);
+    };
+
+    const onStepComplete = (result: any, index: number, pageState: string, action?: any, description?: string) => {
+      const log = `Step ${index + 1} ${result.status}: ${result.duration}ms`;
+      logs.push(log);
+      console.log(`[Dynamic] ${log}`);
+      
+      stepDetails.push({
+        stepId: result.stepId,
+        status: result.status,
+        duration: result.duration,
+        error: result.error,
+        pageState: pageState.slice(0, 500),
+        action,
+        description,
+      });
+    };
+
+    try {
+      const result = await executor.executeDynamically(
+        goal,
+        onStepStart,
+        onStepComplete
+      );
+
+      await browserManager.close();
+
+      return NextResponse.json({
+        success: result.success,
+        goal: result.goal,
+        totalSteps: result.totalSteps,
+        passedSteps: result.passedSteps,
+        failedSteps: result.failedSteps,
+        duration: result.duration,
+        conclusion: result.conclusion,
+        stepResults: result.stepResults.map(r => ({
+          stepId: r.stepId,
+          status: r.status,
+          duration: r.duration,
+          error: r.error,
+          screenshot: r.screenshot,
+          action: r.action,
+          description: r.description,
+        })),
+        logs,
+        stepDetails,
+        finalPageState: result.finalPageState?.slice(0, 1000),
+      });
+
+    } catch (execError: any) {
+      console.error('Dynamic execution error:', execError);
+      await browserManager.close();
+
+      return NextResponse.json({
+        success: false,
+        error: execError.message,
+        logs,
+        stepDetails,
+      }, { status: 500 });
+    }
+
+  } catch (error: any) {
+    console.error('Request error:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to execute dynamic test' },
+      { status: 500 }
+    );
+  }
+}
