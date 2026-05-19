@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { BrowserManager } from '@/browser/browserManager';
 import { DynamicExecutor } from '@/agent/dynamicExecutor';
 import { LLMClient } from '@/llm/llmClient';
+import { BrowserAction } from '@/types';
 
 export const maxDuration = 300;
 
 export async function POST(request: NextRequest) {
   try {
-    const { goal, headless = true } = await request.json();
+    const { goal, headless = true, predefinedSteps } = await request.json();
 
     if (!goal || typeof goal !== 'string') {
       return NextResponse.json(
@@ -48,11 +49,23 @@ export async function POST(request: NextRequest) {
     };
 
     try {
-      const result = await executor.executeDynamically(
-        goal,
-        onStepStart,
-        onStepComplete
-      );
+      let result;
+      
+      if (predefinedSteps && Array.isArray(predefinedSteps) && predefinedSteps.length > 0) {
+        console.log(`[Dynamic] Using ${predefinedSteps.length} predefined steps`);
+        result = await executor.executeWithPredefinedSteps(
+          goal,
+          predefinedSteps as BrowserAction[],
+          onStepStart,
+          onStepComplete
+        );
+      } else {
+        result = await executor.executeDynamically(
+          goal,
+          onStepStart,
+          onStepComplete
+        );
+      }
 
       await browserManager.close();
 

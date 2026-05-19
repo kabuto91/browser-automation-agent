@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import StepLibrary from './components/StepLibrary';
+import { indexedDBStorage, SavedTestFlow } from '../storage/indexedDBStorage';
 
 interface TestStep {
   id: string;
@@ -55,15 +56,14 @@ export default function Home() {
   const [headless, setHeadless] = useState(false);
   const [executionMode, setExecutionMode] = useState<ExecutionMode>('dynamic');
   const [currentPageState, setCurrentPageState] = useState<string>('');
-  const [savingStepId, setSavingStepId] = useState<string | null>(null);
-  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
-  const [stepToSave, setStepToSave] = useState<{stepId: string, description: string, action: any} | null>(null);
-  const [stepName, setStepName] = useState('');
-  const [stepTags, setStepTags] = useState('');
   const [savingWholeFlow, setSavingWholeFlow] = useState(false);
   const [wholeFlowDialogOpen, setWholeFlowDialogOpen] = useState(false);
   const [wholeFlowName, setWholeFlowName] = useState('');
   const [wholeFlowTags, setWholeFlowTags] = useState('');
+
+  useEffect(() => {
+    indexedDBStorage.init().catch(console.error);
+  }, []);
 
   const generatePlan = useCallback(async () => {
     if (!testGoal.trim()) {
@@ -100,16 +100,23 @@ export default function Home() {
     }
   }, [testGoal, executionMode]);
 
-  const executeDynamicTest = useCallback(async () => {
+  const executeDynamicTest = useCallback(async (predefinedSteps?: any[]) => {
     setPhase('executing');
     setExecutionLogs(['Starting dynamic test execution...']);
     setError(null);
 
     try {
+      const requestBody: any = { goal: testGoal, headless };
+      
+      if (predefinedSteps && predefinedSteps.length > 0) {
+        requestBody.predefinedSteps = predefinedSteps;
+        setExecutionLogs(prev => [...prev, `📋 使用 ${predefinedSteps.length} 个预定义步骤`]);
+      }
+
       const response = await fetch('/api/dynamic', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ goal: testGoal, headless }),
+        body: JSON.stringify(requestBody),
       });
 
       const data = await response.json();
@@ -175,11 +182,6 @@ export default function Home() {
     setError(null);
     setExecutionLogs([]);
     setCurrentPageState('');
-    setSavingStepId(null);
-    setSaveDialogOpen(false);
-    setStepToSave(null);
-    setStepName('');
-    setStepTags('');
     setSavingWholeFlow(false);
     setWholeFlowDialogOpen(false);
     setWholeFlowName('');
@@ -206,46 +208,6 @@ export default function Home() {
     }
   };
 
-  const openSaveDialog = (stepId: string, description: string, action: any) => {
-    setStepToSave({ stepId, description, action });
-    setStepName(description);
-    setStepTags('');
-    setSaveDialogOpen(true);
-  };
-
-  const saveStepToLibrary = async () => {
-    if (!stepToSave || !stepName.trim()) return;
-
-    setSavingStepId(stepToSave.stepId);
-    try {
-      const response = await fetch('/api/steps', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'save',
-          step: {
-            name: stepName,
-            description: stepToSave.description,
-            steps: [stepToSave.action],
-            tags: stepTags.split(',').map(t => t.trim()).filter(t => t),
-            goal: testGoal,
-          },
-        }),
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        setExecutionLogs(prev => [...prev, `✅ 步骤 "${stepName}" 已保存到步骤库`]);
-      }
-    } catch (error) {
-      console.error('Failed to save step:', error);
-    } finally {
-      setSavingStepId(null);
-      setSaveDialogOpen(false);
-      setStepToSave(null);
-    }
-  };
-
   const openWholeFlowSaveDialog = () => {
     if (!report) return;
     setWholeFlowName(testGoal);
@@ -264,30 +226,61 @@ export default function Home() {
 
     setSavingWholeFlow(true);
     try {
-      const response = await fetch('/api/steps', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'save',
-          step: {
-            name: wholeFlowName,
-            description: `包含 ${passedSteps.length} 个步骤的测试流程`,
-            steps: passedSteps.map(r => r.action),
-            tags: wholeFlowTags.split(',').map(t => t.trim()).filter(t => t),
-            goal: testGoal,
-          },
-        }),
-      });
+      const flow: SavedTestFlow = {
+        id: `flow-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        name: wholeFlowName,
+        description: `包含 ${passedSteps.length} 个步骤的测试流程`,
+        createdAt: new Date().toISOString(),
+        lastUsed: new Date().toISOString(),
+        useCount: 0,
+        steps: passedSteps.map(r => r.action),
+        tags: wholeFlowTags.split(',').map(t => t.trim()).filter(t => t),
+        variables: [],
+        goal: testGoal,
+      };
 
-      const data = await response.json();
-      if (data.success) {
-        setExecutionLogs(prev => [...prev, `✅ 测试流程 "${wholeFlowName}" 已保存到步骤库（${passedSteps.length} 个步骤）`]);
-      }
+      await indexedDBStorage.saveFlow(flow);
+      setExecutionLogs(prev => [...prev, `✅ 测试流程 "${wholeFlowName}" 已保存到步骤库（${passedSteps.length} 个步骤）`]);
     } catch (error) {
       console.error('Failed to save whole flow:', error);
+      setExecutionLogs(prev => [...prev, '❌ 保存测试流程失败']);
     } finally {
       setSavingWholeFlow(false);
       setWholeFlowDialogOpen(false);
+    }
+  };
+
+  const handleLoadFlow = async (flow: SavedTestFlow) => {
+    setTestGoal(flow.goal || flow.description);
+    setExecutionLogs(prev => [...prev, `✅ 已加载测试流程: ${flow.name}`]);
+    
+    if (flow.steps && flow.steps.length > 0) {
+      const confirmExecute = window.confirm(
+        `是否直接执行此测试流程？\n\n包含 ${flow.steps.length} 个步骤\n\n点击"确定"直接执行，点击"取消"仅加载目标`
+      );
+      
+      if (confirmExecute) {
+        if (executionMode === 'dynamic') {
+          await executeDynamicTest(flow.steps);
+        } else {
+          const testSteps = flow.steps.map((action, index) => ({
+            id: `step-${index}`,
+            description: `Step ${index + 1}`,
+            action,
+            expectedResult: '',
+            assertions: [],
+            timeout: 10000,
+          }));
+          
+          setPlan({
+            id: `plan-${Date.now()}`,
+            goal: flow.goal || flow.description,
+            steps: testSteps,
+          });
+          setPhase('review');
+          setExecutionLogs(prev => [...prev, `📋 已加载 ${testSteps.length} 个步骤，请审核后执行`]);
+        }
+      }
     }
   };
 
@@ -456,11 +449,7 @@ export default function Home() {
             </div>
 
             <div style={{ marginBottom: '1.5rem' }}>
-              <StepLibrary
-                onSelectStep={(step) => {
-                  setTestGoal(step.goal || step.description);
-                }}
-              />
+              <StepLibrary onLoadFlow={handleLoadFlow} />
             </div>
 
             <button
@@ -809,29 +798,6 @@ export default function Home() {
                       }}>
                         {result.status}
                       </span>
-                      {result.status === 'passed' && result.action && (
-                        <button
-                          onClick={() => openSaveDialog(
-                            result.stepId,
-                            result.description || result.stepId,
-                            result.action
-                          )}
-                          disabled={savingStepId === result.stepId}
-                          style={{
-                            padding: '0.5rem 1rem',
-                            borderRadius: '6px',
-                            border: 'none',
-                            background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)',
-                            color: '#fff',
-                            cursor: savingStepId === result.stepId ? 'wait' : 'pointer',
-                            fontSize: '0.85rem',
-                            fontWeight: '500',
-                            opacity: savingStepId === result.stepId ? 0.7 : 1,
-                          }}
-                        >
-                          {savingStepId === result.stepId ? '保存中...' : '💾 保存'}
-                        </button>
-                      )}
                     </div>
                   </div>
                   {result.error && (
@@ -914,164 +880,6 @@ export default function Home() {
           </div>
         )}
       </div>
-
-      {saveDialogOpen && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.7)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-        }}>
-          <div style={{
-            background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
-            borderRadius: '16px',
-            padding: '2rem',
-            width: '90%',
-            maxWidth: '500px',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-          }}>
-            <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem' }}>
-              💾 保存步骤到步骤库
-            </h2>
-
-            <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '0.5rem',
-                color: '#94a3b8',
-                fontSize: '0.9rem',
-              }}>
-                步骤名称 *
-              </label>
-              <input
-                type="text"
-                value={stepName}
-                onChange={(e) => setStepName(e.target.value)}
-                placeholder="输入步骤名称"
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  borderRadius: '8px',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  background: 'rgba(0, 0, 0, 0.3)',
-                  color: '#fff',
-                  fontSize: '1rem',
-                }}
-              />
-            </div>
-
-            <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '0.5rem',
-                color: '#94a3b8',
-                fontSize: '0.9rem',
-              }}>
-                标签 (用逗号分隔)
-              </label>
-              <input
-                type="text"
-                value={stepTags}
-                onChange={(e) => setStepTags(e.target.value)}
-                placeholder="例如: login, github, authentication"
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  borderRadius: '8px',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  background: 'rgba(0, 0, 0, 0.3)',
-                  color: '#fff',
-                  fontSize: '1rem',
-                }}
-              />
-            </div>
-
-            {stepToSave && (
-              <div style={{
-                marginBottom: '1.5rem',
-                padding: '1rem',
-                background: 'rgba(102, 126, 234, 0.1)',
-                borderRadius: '8px',
-                border: '1px solid rgba(102, 126, 234, 0.3)',
-              }}>
-                <div style={{ color: '#a5b4fc', fontSize: '0.9rem', marginBottom: '0.5rem' }}>
-                  步骤描述:
-                </div>
-                <div style={{ color: '#fff', fontSize: '0.95rem' }}>
-                  {stepToSave.description}
-                </div>
-                <details style={{ marginTop: '0.75rem' }}>
-                  <summary style={{
-                    cursor: 'pointer',
-                    color: '#94a3b8',
-                    fontSize: '0.85rem',
-                  }}>
-                    查看操作详情
-                  </summary>
-                  <pre style={{
-                    marginTop: '0.5rem',
-                    padding: '0.5rem',
-                    background: 'rgba(0, 0, 0, 0.3)',
-                    borderRadius: '4px',
-                    fontSize: '0.8rem',
-                    overflow: 'auto',
-                  }}>
-                    {JSON.stringify(stepToSave.action, null, 2)}
-                  </pre>
-                </details>
-              </div>
-            )}
-
-            <div style={{
-              display: 'flex',
-              gap: '1rem',
-              justifyContent: 'flex-end',
-            }}>
-              <button
-                onClick={() => {
-                  setSaveDialogOpen(false);
-                  setStepToSave(null);
-                }}
-                style={{
-                  padding: '0.75rem 1.5rem',
-                  borderRadius: '8px',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  background: 'transparent',
-                  color: '#fff',
-                  cursor: 'pointer',
-                  fontSize: '1rem',
-                }}
-              >
-                取消
-              </button>
-              <button
-                onClick={saveStepToLibrary}
-                disabled={!stepName.trim() || savingStepId !== null}
-                style={{
-                  padding: '0.75rem 1.5rem',
-                  borderRadius: '8px',
-                  border: 'none',
-                  background: stepName.trim() && savingStepId === null
-                    ? 'linear-gradient(90deg, #22c55e 0%, #16a34a 100%)'
-                    : '#4b5563',
-                  color: '#fff',
-                  cursor: stepName.trim() && savingStepId === null ? 'pointer' : 'not-allowed',
-                  fontSize: '1rem',
-                  fontWeight: '500',
-                }}
-              >
-                {savingStepId !== null ? '保存中...' : '保存'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {wholeFlowDialogOpen && (
         <div style={{
