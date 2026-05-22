@@ -62,6 +62,9 @@ export default function Home() {
   const [wholeFlowTags, setWholeFlowTags] = useState('');
   const [cdpEndpoint, setCdpEndpoint] = useState('');
   const [useExistingBrowser, setUseExistingBrowser] = useState(false);
+  const [pausedForLogin, setPausedForLogin] = useState(false);
+  const [loginReason, setLoginReason] = useState<string>('');
+  const [savedExecutionState, setSavedExecutionState] = useState<any>(null);
 
   useEffect(() => {
     indexedDBStorage.init().catch(console.error);
@@ -102,10 +105,12 @@ export default function Home() {
     }
   }, [testGoal, executionMode]);
 
-  const executeDynamicTest = useCallback(async (predefinedSteps?: any[], customGoal?: string) => {
+  const executeDynamicTest = useCallback(async (predefinedSteps?: any[], customGoal?: string, sessionId?: string) => {
     setPhase('executing');
     setExecutionLogs(['Starting dynamic test execution...']);
     setError(null);
+    setPausedForLogin(false);
+    setLoginReason('');
 
     const goalToUse = customGoal || testGoal;
 
@@ -117,7 +122,10 @@ export default function Home() {
         setExecutionLogs(prev => [...prev, `📋 使用 ${predefinedSteps.length} 个预定义步骤`]);
       }
 
-      if (useExistingBrowser && cdpEndpoint) {
+      if (sessionId) {
+        requestBody.sessionId = sessionId;
+        setExecutionLogs(prev => [...prev, `🔄 恢复会话: ${sessionId}`]);
+      } else if (useExistingBrowser && cdpEndpoint) {
         requestBody.cdpEndpoint = cdpEndpoint;
         setExecutionLogs(prev => [...prev, `🔗 连接到已有浏览器: ${cdpEndpoint}`]);
       }
@@ -132,6 +140,22 @@ export default function Home() {
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to execute dynamic test');
+      }
+
+      if (data.pausedForLogin) {
+        setPausedForLogin(true);
+        setLoginReason(data.loginReason || '检测到需要登录');
+        setExecutionLogs(prev => [...prev, `⚠️ 检测到需要登录: ${data.loginReason}`]);
+        setExecutionLogs(prev => [...prev, `💡 请在浏览器中手动完成登录，然后点击"继续测试"按钮`]);
+        setSavedExecutionState({
+          goal: goalToUse,
+          predefinedSteps,
+          headless,
+          cdpEndpoint,
+          useExistingBrowser,
+          sessionId: data.sessionId,
+        });
+        return;
       }
 
       setExecutionLogs(data.logs || []);
@@ -202,7 +226,23 @@ export default function Home() {
     setWholeFlowDialogOpen(false);
     setWholeFlowName('');
     setWholeFlowTags('');
+    setPausedForLogin(false);
+    setLoginReason('');
+    setSavedExecutionState(null);
   }, []);
+
+  const resumeTest = useCallback(async () => {
+    if (!savedExecutionState) return;
+    
+    setExecutionLogs(prev => [...prev, '🔄 恢复测试执行...']);
+    setPausedForLogin(false);
+    
+    await executeDynamicTest(
+      savedExecutionState.predefinedSteps,
+      savedExecutionState.goal,
+      savedExecutionState.sessionId
+    );
+  }, [savedExecutionState, executeDynamicTest]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -703,6 +743,42 @@ export default function Home() {
             <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>
               ⚡ Executing Test...
             </h2>
+            
+            {pausedForLogin && (
+              <div style={{
+                background: 'rgba(249, 115, 22, 0.2)',
+                border: '1px solid rgba(249, 115, 22, 0.5)',
+                borderRadius: '12px',
+                padding: '1.5rem',
+                marginBottom: '1rem',
+              }}>
+                <h3 style={{ color: '#f97316', marginBottom: '0.5rem', fontSize: '1.2rem' }}>
+                  🔐 需要登录
+                </h3>
+                <p style={{ color: '#94a3b8', marginBottom: '1rem' }}>
+                  {loginReason}
+                </p>
+                <p style={{ color: '#cbd5e1', marginBottom: '1rem', fontSize: '0.9rem' }}>
+                  请在浏览器中手动完成登录操作，然后点击下方按钮继续测试。
+                </p>
+                <button
+                  onClick={resumeTest}
+                  style={{
+                    background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '0.75rem 1.5rem',
+                    color: 'white',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    fontSize: '1rem',
+                  }}
+                >
+                  ✅ 已完成登录，继续测试
+                </button>
+              </div>
+            )}
+            
             <div style={{
               background: 'rgba(0, 0, 0, 0.3)',
               borderRadius: '8px',

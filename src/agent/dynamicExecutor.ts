@@ -5,6 +5,7 @@ import { Observer } from './observer';
 import { DynamicPlanner, ExecutionHistory } from './dynamicPlanner';
 import { LLMClient } from '../llm/llmClient';
 import { config } from '../config';
+import { LoginDetector } from './loginDetector';
 
 export interface DynamicExecutionResult {
   success: boolean;
@@ -16,12 +17,26 @@ export interface DynamicExecutionResult {
   stepResults: StepResult[];
   conclusion: 'passed' | 'failed' | 'partial';
   finalPageState?: string;
+  pausedForLogin?: boolean;
+  loginReason?: string;
+}
+
+export interface ExecutionState {
+  goal: string;
+  stepIndex: number;
+  history: ExecutionHistory[];
+  results: StepResult[];
+  predefinedSteps?: BrowserAction[];
+  usePredefinedSteps: boolean;
 }
 
 export class DynamicExecutor {
   private actions: BrowserActions;
   private observer: Observer;
   private dynamicPlanner: DynamicPlanner;
+  private loginDetector: LoginDetector;
+  private paused: boolean = false;
+  private executionState: ExecutionState | null = null;
 
   constructor(
     private page: Page,
@@ -30,12 +45,57 @@ export class DynamicExecutor {
     this.actions = new BrowserActions(page);
     this.observer = new Observer(page);
     this.dynamicPlanner = new DynamicPlanner(llm, { maxSteps: 20 });
+    this.loginDetector = new LoginDetector(llm);
+  }
+
+  pause() {
+    this.paused = true;
+    console.log('[DynamicExecutor] Execution paused');
+  }
+
+  resume() {
+    this.paused = false;
+    console.log('[DynamicExecutor] Execution resumed');
+  }
+
+  getExecutionState(): ExecutionState | null {
+    return this.executionState;
+  }
+
+  setExecutionState(state: ExecutionState) {
+    this.executionState = state;
+  }
+
+  private async checkForLogin(pageState: string): Promise<{ needsLogin: boolean; reason: string }> {
+    const quickResult = this.loginDetector.quickDetectLoginRequired(pageState);
+    
+    if (quickResult.needsLogin && quickResult.confidence > 0.7) {
+      return {
+        needsLogin: true,
+        reason: quickResult.reason,
+      };
+    }
+
+    if (quickResult.needsLogin || quickResult.confidence > 0.4) {
+      console.log('[DynamicExecutor] Quick detection found login indicators, using LLM for confirmation...');
+      const llmResult = await this.loginDetector.detectLoginRequired(pageState);
+      
+      if (llmResult.needsLogin && llmResult.confidence > 0.6) {
+        return {
+          needsLogin: true,
+          reason: llmResult.reason,
+        };
+      }
+    }
+
+    return { needsLogin: false, reason: '' };
   }
 
   async executeDynamically(
     goal: string,
     onStepStart?: (step: TestStep, index: number) => void,
-    onStepComplete?: (result: StepResult, index: number, pageState: string, action?: BrowserAction, description?: string) => void
+    onStepComplete?: (result: StepResult, index: number, pageState: string, action?: BrowserAction, description?: string) => void,
+    onLoginRequired?: (reason: string) => void
   ): Promise<DynamicExecutionResult> {
     const startTime = Date.now();
     const results: StepResult[] = [];
@@ -45,7 +105,60 @@ export class DynamicExecutor {
     let completed = false;
 
     while (!completed && stepIndex < 20) {
+      if (this.paused) {
+        this.executionState = {
+          goal,
+          stepIndex,
+          history,
+          results,
+          usePredefinedSteps: false,
+        };
+        
+        return {
+          success: false,
+          goal,
+          totalSteps: results.length,
+          passedSteps: results.filter(r => r.status === 'passed').length,
+          failedSteps: results.filter(r => r.status === 'failed' || r.status === 'error').length,
+          duration: Date.now() - startTime,
+          stepResults: results,
+          conclusion: 'partial',
+          pausedForLogin: true,
+          loginReason: 'Execution paused by user',
+        };
+      }
+
       const pageState = await this.observer.getPageSnapshotForLLM();
+      
+      const loginCheck = await this.checkForLogin(pageState);
+      if (loginCheck.needsLogin) {
+        console.log('[DynamicExecutor] Login required detected:', loginCheck.reason);
+        
+        this.executionState = {
+          goal,
+          stepIndex,
+          history,
+          results,
+          usePredefinedSteps: false,
+        };
+        
+        if (onLoginRequired) {
+          onLoginRequired(loginCheck.reason);
+        }
+        
+        return {
+          success: false,
+          goal,
+          totalSteps: results.length,
+          passedSteps: results.filter(r => r.status === 'passed').length,
+          failedSteps: results.filter(r => r.status === 'failed' || r.status === 'error').length,
+          duration: Date.now() - startTime,
+          stepResults: results,
+          conclusion: 'partial',
+          pausedForLogin: true,
+          loginReason: loginCheck.reason,
+        };
+      }
       
       const nextStep = await this.dynamicPlanner.getNextStep(
         goal,
@@ -229,7 +342,8 @@ export class DynamicExecutor {
     goal: string,
     predefinedSteps: BrowserAction[],
     onStepStart?: (step: TestStep, index: number) => void,
-    onStepComplete?: (result: StepResult, index: number, pageState: string, action?: BrowserAction, description?: string) => void
+    onStepComplete?: (result: StepResult, index: number, pageState: string, action?: BrowserAction, description?: string) => void,
+    onLoginRequired?: (reason: string) => void
   ): Promise<DynamicExecutionResult> {
     const startTime = Date.now();
     const results: StepResult[] = [];
@@ -240,7 +354,62 @@ export class DynamicExecutor {
     let usePredefinedSteps = true;
 
     while (!completed && stepIndex < 20) {
+      if (this.paused) {
+        this.executionState = {
+          goal,
+          stepIndex,
+          history,
+          results,
+          predefinedSteps,
+          usePredefinedSteps,
+        };
+        
+        return {
+          success: false,
+          goal,
+          totalSteps: results.length,
+          passedSteps: results.filter(r => r.status === 'passed').length,
+          failedSteps: results.filter(r => r.status === 'failed' || r.status === 'error').length,
+          duration: Date.now() - startTime,
+          stepResults: results,
+          conclusion: 'partial',
+          pausedForLogin: true,
+          loginReason: 'Execution paused by user',
+        };
+      }
+
       const pageState = await this.observer.getPageSnapshotForLLM();
+      
+      const loginCheck = await this.checkForLogin(pageState);
+      if (loginCheck.needsLogin) {
+        console.log('[DynamicExecutor] Login required detected:', loginCheck.reason);
+        
+        this.executionState = {
+          goal,
+          stepIndex,
+          history,
+          results,
+          predefinedSteps,
+          usePredefinedSteps,
+        };
+        
+        if (onLoginRequired) {
+          onLoginRequired(loginCheck.reason);
+        }
+        
+        return {
+          success: false,
+          goal,
+          totalSteps: results.length,
+          passedSteps: results.filter(r => r.status === 'passed').length,
+          failedSteps: results.filter(r => r.status === 'failed' || r.status === 'error').length,
+          duration: Date.now() - startTime,
+          stepResults: results,
+          conclusion: 'partial',
+          pausedForLogin: true,
+          loginReason: loginCheck.reason,
+        };
+      }
       
       let nextStep: { action?: BrowserAction; description?: string; stepId: string; expectedResult?: string; completed?: boolean };
 

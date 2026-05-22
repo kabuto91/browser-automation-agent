@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { BrowserManager } from '@/browser/browserManager';
+import { globalBrowserManager } from '@/browser/globalBrowserManager';
 import { DynamicExecutor } from '@/agent/dynamicExecutor';
 import { LLMClient } from '@/llm/llmClient';
 import { BrowserAction } from '@/types';
@@ -8,7 +8,7 @@ export const maxDuration = 300;
 
 export async function POST(request: NextRequest) {
   try {
-    const { goal, headless = true, predefinedSteps, cdpEndpoint } = await request.json();
+    const { goal, headless = true, predefinedSteps, cdpEndpoint, sessionId } = await request.json();
 
     if (!goal || typeof goal !== 'string') {
       return NextResponse.json(
@@ -17,16 +17,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const browserManager = new BrowserManager();
     const llm = new LLMClient();
 
     let page;
+    let currentSessionId: string;
+
     try {
-      if (cdpEndpoint) {
+      if (sessionId) {
+        console.log(`[Dynamic] Resuming with session: ${sessionId}`);
+        page = globalBrowserManager.getPage(sessionId);
+        
+        if (!page) {
+          return NextResponse.json(
+            { error: 'Session expired or invalid. Please start a new test.' },
+            { status: 400 }
+          );
+        }
+        
+        currentSessionId = sessionId;
+        globalBrowserManager.keepAlive();
+      } else if (cdpEndpoint) {
         console.log(`[Dynamic] Connecting to existing browser at ${cdpEndpoint}`);
-        page = await browserManager.connectToExistingBrowser(cdpEndpoint);
+        const result = await globalBrowserManager.connectToExistingBrowser(cdpEndpoint);
+        page = result.page;
+        currentSessionId = result.sessionId;
       } else {
-        page = await browserManager.launch(headless);
+        console.log(`[Dynamic] Launching new browser`);
+        const result = await globalBrowserManager.launch(headless);
+        page = result.page;
+        currentSessionId = result.sessionId;
       }
     } catch (browserError: any) {
       return NextResponse.json(
@@ -62,6 +81,12 @@ export async function POST(request: NextRequest) {
       });
     };
 
+    const onLoginRequired = (reason: string) => {
+      const log = `⚠️ Login required: ${reason}`;
+      logs.push(log);
+      console.log(`[Dynamic] ${log}`);
+    };
+
     try {
       let result;
       
@@ -71,17 +96,48 @@ export async function POST(request: NextRequest) {
           goal,
           predefinedSteps as BrowserAction[],
           onStepStart,
-          onStepComplete
+          onStepComplete,
+          onLoginRequired
         );
       } else {
         result = await executor.executeDynamically(
           goal,
           onStepStart,
-          onStepComplete
+          onStepComplete,
+          onLoginRequired
         );
       }
 
-      await browserManager.close();
+      if (result.pausedForLogin) {
+        console.log(`[Dynamic] Test paused for login, keeping browser open`);
+        
+        return NextResponse.json({
+          success: result.success,
+          goal: result.goal,
+          totalSteps: result.totalSteps,
+          passedSteps: result.passedSteps,
+          failedSteps: result.failedSteps,
+          duration: result.duration,
+          conclusion: result.conclusion,
+          stepResults: result.stepResults.map(r => ({
+            stepId: r.stepId,
+            status: r.status,
+            duration: r.duration,
+            error: r.error,
+            screenshot: r.screenshot,
+            action: r.action,
+            description: r.description,
+          })),
+          logs,
+          stepDetails,
+          finalPageState: result.finalPageState?.slice(0, 1000),
+          pausedForLogin: result.pausedForLogin,
+          loginReason: result.loginReason,
+          sessionId: currentSessionId,
+        });
+      }
+
+      await globalBrowserManager.close();
 
       return NextResponse.json({
         success: result.success,
@@ -107,7 +163,7 @@ export async function POST(request: NextRequest) {
 
     } catch (execError: any) {
       console.error('Dynamic execution error:', execError);
-      await browserManager.close();
+      await globalBrowserManager.close();
 
       return NextResponse.json({
         success: false,
