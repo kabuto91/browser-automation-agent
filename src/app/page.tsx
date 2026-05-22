@@ -60,6 +60,8 @@ export default function Home() {
   const [wholeFlowDialogOpen, setWholeFlowDialogOpen] = useState(false);
   const [wholeFlowName, setWholeFlowName] = useState('');
   const [wholeFlowTags, setWholeFlowTags] = useState('');
+  const [cdpEndpoint, setCdpEndpoint] = useState('');
+  const [useExistingBrowser, setUseExistingBrowser] = useState(false);
 
   useEffect(() => {
     indexedDBStorage.init().catch(console.error);
@@ -100,17 +102,24 @@ export default function Home() {
     }
   }, [testGoal, executionMode]);
 
-  const executeDynamicTest = useCallback(async (predefinedSteps?: any[]) => {
+  const executeDynamicTest = useCallback(async (predefinedSteps?: any[], customGoal?: string) => {
     setPhase('executing');
     setExecutionLogs(['Starting dynamic test execution...']);
     setError(null);
 
+    const goalToUse = customGoal || testGoal;
+
     try {
-      const requestBody: any = { goal: testGoal, headless };
+      const requestBody: any = { goal: goalToUse, headless };
       
       if (predefinedSteps && predefinedSteps.length > 0) {
         requestBody.predefinedSteps = predefinedSteps;
         setExecutionLogs(prev => [...prev, `📋 使用 ${predefinedSteps.length} 个预定义步骤`]);
+      }
+
+      if (useExistingBrowser && cdpEndpoint) {
+        requestBody.cdpEndpoint = cdpEndpoint;
+        setExecutionLogs(prev => [...prev, `🔗 连接到已有浏览器: ${cdpEndpoint}`]);
       }
 
       const response = await fetch('/api/dynamic', {
@@ -143,7 +152,7 @@ export default function Home() {
       setError(err.message);
       setPhase('input');
     }
-  }, [testGoal, headless]);
+  }, [testGoal, headless, useExistingBrowser, cdpEndpoint]);
 
   const executeTest = useCallback(async () => {
     if (!plan) return;
@@ -153,10 +162,17 @@ export default function Home() {
     setError(null);
 
     try {
+      const requestBody: any = { plan, headless };
+      
+      if (useExistingBrowser && cdpEndpoint) {
+        requestBody.cdpEndpoint = cdpEndpoint;
+        setExecutionLogs(prev => [...prev, `🔗 连接到已有浏览器: ${cdpEndpoint}`]);
+      }
+
       const response = await fetch('/api/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan, headless }),
+        body: JSON.stringify(requestBody),
       });
 
       const data = await response.json();
@@ -172,7 +188,7 @@ export default function Home() {
       setError(err.message);
       setPhase('review');
     }
-  }, [plan, headless]);
+  }, [plan, headless, useExistingBrowser, cdpEndpoint]);
 
   const reset = useCallback(() => {
     setPhase('input');
@@ -251,7 +267,8 @@ export default function Home() {
   };
 
   const handleLoadFlow = async (flow: SavedTestFlow) => {
-    setTestGoal(flow.goal || flow.description);
+    const goalToUse = flow.goal || flow.description;
+    setTestGoal(goalToUse);
     setExecutionLogs(prev => [...prev, `✅ 已加载测试流程: ${flow.name}`]);
     
     if (flow.steps && flow.steps.length > 0) {
@@ -261,7 +278,7 @@ export default function Home() {
       
       if (confirmExecute) {
         if (executionMode === 'dynamic') {
-          await executeDynamicTest(flow.steps);
+          await executeDynamicTest(flow.steps, goalToUse);
         } else {
           const testSteps = flow.steps.map((action, index) => ({
             id: `step-${index}`,
@@ -274,7 +291,7 @@ export default function Home() {
           
           setPlan({
             id: `plan-${Date.now()}`,
-            goal: flow.goal || flow.description,
+            goal: goalToUse,
             steps: testSteps,
           });
           setPhase('review');
@@ -446,6 +463,68 @@ export default function Home() {
                 />
                 <span>Headless Mode (run browser in background)</span>
               </label>
+            </div>
+
+            <div style={{
+              background: 'rgba(34, 197, 94, 0.1)',
+              borderRadius: '8px',
+              padding: '1rem',
+              marginBottom: '1.5rem',
+              border: '1px solid rgba(34, 197, 94, 0.3)',
+            }}>
+              <h3 style={{ fontSize: '1rem', marginBottom: '0.75rem', color: '#86efac' }}>
+                🔗 连接到已有浏览器
+              </h3>
+              <div style={{ marginBottom: '0.75rem' }}>
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  cursor: 'pointer',
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={useExistingBrowser}
+                    onChange={(e) => setUseExistingBrowser(e.target.checked)}
+                    style={{ width: '18px', height: '18px' }}
+                  />
+                  <span>使用已有浏览器</span>
+                </label>
+              </div>
+              {useExistingBrowser && (
+                <div>
+                  <div style={{ 
+                    fontSize: '0.85rem', 
+                    color: '#94a3b8', 
+                    marginBottom: '0.5rem' 
+                  }}>
+                    请先以调试模式启动 Chrome：
+                    <code style={{ 
+                      background: 'rgba(0, 0, 0, 0.3)', 
+                      padding: '0.25rem 0.5rem', 
+                      borderRadius: '4px',
+                      marginLeft: '0.5rem'
+                    }}>
+                      chrome.exe --remote-debugging-port=9222
+                    </code>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="CDP Endpoint (例如: http://localhost:9222)"
+                    value={cdpEndpoint}
+                    onChange={(e) => setCdpEndpoint(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      borderRadius: '8px',
+                      border: '1px solid rgba(255, 255, 255, 0.2)',
+                      background: 'rgba(0, 0, 0, 0.3)',
+                      color: '#fff',
+                      fontSize: '1rem',
+                    }}
+                  />
+                </div>
+              )}
             </div>
 
             <div style={{ marginBottom: '1.5rem' }}>

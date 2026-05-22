@@ -5,6 +5,7 @@ export class BrowserManager {
   private browser: Browser | null = null;
   private context: BrowserContext | null = null;
   private page: Page | null = null;
+  private isConnected: boolean = false;
 
   async launch(headless?: boolean): Promise<Page> {
     const isHeadless = headless ?? config.browser.headless;
@@ -28,44 +29,92 @@ export class BrowserManager {
     await this.context.setDefaultTimeout(config.browser.timeout);
 
     this.page = await this.context.newPage();
+    this.isConnected = false;
     
     return this.page;
   }
 
+  async connectToExistingBrowser(cdpEndpoint: string): Promise<Page> {
+    try {
+      console.log(`[BrowserManager] Connecting to existing browser at ${cdpEndpoint}`);
+      
+      this.browser = await chromium.connectOverCDP(cdpEndpoint);
+      this.isConnected = true;
+      
+      console.log(`[BrowserManager] Successfully connected to browser`);
+      
+      const contexts = this.browser.contexts();
+      if (contexts.length > 0) {
+        this.context = contexts[0];
+        const pages = this.context.pages();
+        if (pages.length > 0) {
+          this.page = pages[0];
+          console.log(`[BrowserManager] Using existing page`);
+        } else {
+          this.page = await this.context.newPage();
+          console.log(`[BrowserManager] Created new page`);
+        }
+      } else {
+        this.context = await this.browser.newContext({
+          viewport: config.browser.viewport,
+          userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          locale: 'zh-CN',
+          timezoneId: 'Asia/Shanghai',
+        });
+        await this.context.setDefaultTimeout(config.browser.timeout);
+        this.page = await this.context.newPage();
+        console.log(`[BrowserManager] Created new context and page`);
+      }
+
+      return this.page;
+    } catch (error: any) {
+      console.error(`[BrowserManager] Failed to connect to browser:`, error.message);
+      throw new Error(`Failed to connect to browser at ${cdpEndpoint}: ${error.message}`);
+    }
+  }
+
   getPage(): Page {
     if (!this.page) {
-      throw new Error('Browser not launched. Call launch() first.');
+      throw new Error('Browser not launched. Call launch() or connectToExistingBrowser() first.');
     }
     return this.page;
   }
 
   getContext(): BrowserContext {
     if (!this.context) {
-      throw new Error('Browser not launched. Call launch() first.');
+      throw new Error('Browser not launched. Call launch() or connectToExistingBrowser() first.');
     }
     return this.context;
   }
 
   async newPage(): Promise<Page> {
     if (!this.context) {
-      throw new Error('Browser not launched. Call launch() first.');
+      throw new Error('Browser not launched. Call launch() or connectToExistingBrowser() first.');
     }
     return await this.context.newPage();
   }
 
   async close(): Promise<void> {
-    if (this.page) {
+    if (this.page && !this.isConnected) {
       await this.page.close().catch(() => {});
-      this.page = null;
     }
-    if (this.context) {
+    this.page = null;
+    
+    if (this.context && !this.isConnected) {
       await this.context.close().catch(() => {});
-      this.context = null;
     }
+    this.context = null;
+    
     if (this.browser) {
-      await this.browser.close().catch(() => {});
+      if (this.isConnected) {
+        await this.browser.close().catch(() => {});
+      } else {
+        await this.browser.close().catch(() => {});
+      }
       this.browser = null;
     }
+    
+    this.isConnected = false;
   }
 
   async clearCookies(): Promise<void> {
@@ -78,5 +127,9 @@ export class BrowserManager {
     if (this.page) {
       await this.page.setViewportSize({ width, height });
     }
+  }
+
+  isConnectedToExistingBrowser(): boolean {
+    return this.isConnected;
   }
 }

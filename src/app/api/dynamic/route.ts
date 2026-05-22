@@ -8,7 +8,7 @@ export const maxDuration = 300;
 
 export async function POST(request: NextRequest) {
   try {
-    const { goal, headless = true, predefinedSteps } = await request.json();
+    const { goal, headless = true, predefinedSteps, cdpEndpoint } = await request.json();
 
     if (!goal || typeof goal !== 'string') {
       return NextResponse.json(
@@ -20,7 +20,21 @@ export async function POST(request: NextRequest) {
     const browserManager = new BrowserManager();
     const llm = new LLMClient();
 
-    const page = await browserManager.launch(headless);
+    let page;
+    try {
+      if (cdpEndpoint) {
+        console.log(`[Dynamic] Connecting to existing browser at ${cdpEndpoint}`);
+        page = await browserManager.connectToExistingBrowser(cdpEndpoint);
+      } else {
+        page = await browserManager.launch(headless);
+      }
+    } catch (browserError: any) {
+      return NextResponse.json(
+        { error: `Browser connection failed: ${browserError.message}` },
+        { status: 500 }
+      );
+    }
+
     const executor = new DynamicExecutor(page, llm);
 
     const logs: string[] = [];

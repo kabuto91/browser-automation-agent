@@ -21,7 +21,7 @@ const executionStates = new Map<string, ExecutionState>();
 
 export async function POST(request: NextRequest) {
   try {
-    const { plan: planData, headless = true } = await request.json();
+    const { plan: planData, headless = true, cdpEndpoint } = await request.json();
 
     if (!planData || !planData.steps) {
       return NextResponse.json(
@@ -59,7 +59,21 @@ export async function POST(request: NextRequest) {
     const reporter = new Reporter();
     const replanner = new Replanner(llm);
 
-    const page = await browserManager.launch(headless);
+    let page;
+    try {
+      if (cdpEndpoint) {
+        console.log(`[Execute] Connecting to existing browser at ${cdpEndpoint}`);
+        page = await browserManager.connectToExistingBrowser(cdpEndpoint);
+      } else {
+        page = await browserManager.launch(headless);
+      }
+    } catch (browserError: any) {
+      return NextResponse.json(
+        { error: `Browser connection failed: ${browserError.message}` },
+        { status: 500 }
+      );
+    }
+
     const executor = new Executor(page);
     const observer = new Observer(page);
 
