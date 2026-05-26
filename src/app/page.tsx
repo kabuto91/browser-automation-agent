@@ -66,8 +66,169 @@ export default function Home() {
   const [loginReason, setLoginReason] = useState<string>('');
   const [savedExecutionState, setSavedExecutionState] = useState<any>(null);
 
+  const [progressData, setProgressData] = useState({
+    currentStep: 0,
+    totalSteps: 0,
+    currentStepDescription: '',
+    progress: 0,
+    stepStatuses: [] as Array<{ step: number; status: string; duration: number; screenshot?: string }>,
+    liveLogs: [] as string[],
+    screenshots: [] as string[],
+    sessionId: '',
+  });
+  const [eventSource, setEventSource] = useState<EventSource | null>(null);
+
   useEffect(() => {
     indexedDBStorage.init().catch(console.error);
+  }, []);
+
+  const connectToProgressStream = useCallback(async (apiEndpoint: string, requestBody: any) => {
+    setPhase('executing');
+    setError(null);
+    setPausedForLogin(false);
+    setLoginReason('');
+    
+    setProgressData({
+      currentStep: 0,
+      totalSteps: 0,
+      currentStepDescription: '',
+      progress: 0,
+      stepStatuses: [],
+      liveLogs: ['开始连接进度流...'],
+      screenshots: [],
+      sessionId: '',
+    });
+
+    try {
+      const response = await fetch(apiEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to connect to progress stream');
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) {
+        throw new Error('No response body');
+      }
+
+      while (true) {
+        const { done, value } = await reader.read();
+        
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const event = JSON.parse(line.substring(6));
+              
+              switch (event.type) {
+                case 'start':
+                  setProgressData(prev => ({
+                    ...prev,
+                    totalSteps: event.totalSteps || prev.totalSteps,
+                    sessionId: event.sessionId || prev.sessionId,
+                    liveLogs: [...prev.liveLogs, event.message || ''],
+                  }));
+                  break;
+
+                case 'step_start':
+                  setProgressData(prev => ({
+                    ...prev,
+                    currentStep: event.stepIndex + 1,
+                    currentStepDescription: event.stepDescription || '',
+                    progress: event.progress || 0,
+                    liveLogs: [...prev.liveLogs, `步骤 ${event.stepIndex + 1}: ${event.stepDescription}`],
+                  }));
+                  break;
+
+                case 'step_complete':
+                  setProgressData(prev => ({
+                    ...prev,
+                    stepStatuses: [...prev.stepStatuses, {
+                      step: event.stepIndex,
+                      status: event.status,
+                      duration: event.duration,
+                      screenshot: event.screenshot,
+                    }],
+                    screenshots: event.screenshot 
+                      ? [...prev.screenshots, event.screenshot]
+                      : prev.screenshots,
+                    progress: ((event.stepIndex + 1) / prev.totalSteps) * 100,
+                  }));
+                  break;
+
+                case 'step_error':
+                  setProgressData(prev => ({
+                    ...prev,
+                    stepStatuses: [...prev.stepStatuses, {
+                      step: event.stepIndex,
+                      status: 'error',
+                      duration: 0,
+                    }],
+                    liveLogs: [...prev.liveLogs, `❌ 步骤 ${event.stepIndex + 1} 错误: ${event.error}`],
+                  }));
+                  break;
+
+                case 'login_required':
+                  setPausedForLogin(true);
+                  setLoginReason(event.loginReason || '检测到需要登录');
+                  setSavedExecutionState({
+                    goal: requestBody.goal,
+                    predefinedSteps: requestBody.predefinedSteps,
+                    headless: requestBody.headless,
+                    cdpEndpoint: requestBody.cdpEndpoint,
+                    useExistingBrowser: requestBody.useExistingBrowser,
+                    sessionId: event.sessionId,
+                  });
+                  setProgressData(prev => ({
+                    ...prev,
+                    liveLogs: [...prev.liveLogs, `⚠️ 需要登录: ${event.loginReason}`],
+                    liveLogs: [...prev.liveLogs, '💡 请在浏览器中手动完成登录，然后点击"继续测试"按钮'],
+                  }));
+                  return;
+
+                case 'complete':
+                  setReport(event.report);
+                  setProgressData(prev => ({
+                    ...prev,
+                    progress: 100,
+                    liveLogs: [...prev.liveLogs, '✅ 测试完成'],
+                  }));
+                  setPhase('result');
+                  return;
+
+                case 'error':
+                  setError(event.error);
+                  setProgressData(prev => ({
+                    ...prev,
+                    liveLogs: [...prev.liveLogs, `❌ 错误: ${event.error}`],
+                  }));
+                  setPhase('input');
+                  return;
+              }
+            } catch (parseError) {
+              console.error('Failed to parse event:', parseError);
+            }
+          }
+        }
+      }
+    } catch (err: any) {
+      setError(err.message);
+      setProgressData(prev => ({
+        ...prev,
+        liveLogs: [...prev.liveLogs, `❌ 连接失败: ${err.message}`],
+      }));
+      setPhase('input');
+    }
   }, []);
 
   const generatePlan = useCallback(async () => {
@@ -106,113 +267,34 @@ export default function Home() {
   }, [testGoal, executionMode]);
 
   const executeDynamicTest = useCallback(async (predefinedSteps?: any[], customGoal?: string, sessionId?: string) => {
-    setPhase('executing');
-    setExecutionLogs(['Starting dynamic test execution...']);
-    setError(null);
-    setPausedForLogin(false);
-    setLoginReason('');
-
     const goalToUse = customGoal || testGoal;
 
-    try {
-      const requestBody: any = { goal: goalToUse, headless };
-      
-      if (predefinedSteps && predefinedSteps.length > 0) {
-        requestBody.predefinedSteps = predefinedSteps;
-        setExecutionLogs(prev => [...prev, `📋 使用 ${predefinedSteps.length} 个预定义步骤`]);
-      }
-
-      if (sessionId) {
-        requestBody.sessionId = sessionId;
-        setExecutionLogs(prev => [...prev, `🔄 恢复会话: ${sessionId}`]);
-      } else if (useExistingBrowser && cdpEndpoint) {
-        requestBody.cdpEndpoint = cdpEndpoint;
-        setExecutionLogs(prev => [...prev, `🔗 连接到已有浏览器: ${cdpEndpoint}`]);
-      }
-
-      const response = await fetch('/api/dynamic', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to execute dynamic test');
-      }
-
-      if (data.pausedForLogin) {
-        setPausedForLogin(true);
-        setLoginReason(data.loginReason || '检测到需要登录');
-        setExecutionLogs(prev => [...prev, `⚠️ 检测到需要登录: ${data.loginReason}`]);
-        setExecutionLogs(prev => [...prev, `💡 请在浏览器中手动完成登录，然后点击"继续测试"按钮`]);
-        setSavedExecutionState({
-          goal: goalToUse,
-          predefinedSteps,
-          headless,
-          cdpEndpoint,
-          useExistingBrowser,
-          sessionId: data.sessionId,
-        });
-        return;
-      }
-
-      setExecutionLogs(data.logs || []);
-      setReport({
-        goal: data.goal,
-        totalSteps: data.totalSteps,
-        passedSteps: data.passedSteps,
-        failedSteps: data.failedSteps,
-        duration: data.duration,
-        conclusion: data.conclusion,
-        stepResults: data.stepResults,
-        logs: data.logs,
-        stepDetails: data.stepDetails,
-        finalPageState: data.finalPageState,
-      });
-      setPhase('result');
-    } catch (err: any) {
-      setError(err.message);
-      setPhase('input');
+    const requestBody: any = { goal: goalToUse, headless };
+    
+    if (predefinedSteps && predefinedSteps.length > 0) {
+      requestBody.predefinedSteps = predefinedSteps;
     }
-  }, [testGoal, headless, useExistingBrowser, cdpEndpoint]);
+
+    if (sessionId) {
+      requestBody.sessionId = sessionId;
+    } else if (useExistingBrowser && cdpEndpoint) {
+      requestBody.cdpEndpoint = cdpEndpoint;
+    }
+
+    await connectToProgressStream('/api/dynamic/stream', requestBody);
+  }, [testGoal, headless, useExistingBrowser, cdpEndpoint, connectToProgressStream]);
 
   const executeTest = useCallback(async () => {
     if (!plan) return;
 
-    setPhase('executing');
-    setExecutionLogs(['Starting test execution...']);
-    setError(null);
-
-    try {
-      const requestBody: any = { plan, headless };
-      
-      if (useExistingBrowser && cdpEndpoint) {
-        requestBody.cdpEndpoint = cdpEndpoint;
-        setExecutionLogs(prev => [...prev, `🔗 连接到已有浏览器: ${cdpEndpoint}`]);
-      }
-
-      const response = await fetch('/api/execute', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to execute test');
-      }
-
-      setReport(data.report);
-      setExecutionLogs(prev => [...prev, `Test completed: ${data.report?.conclusion}`]);
-      setPhase('result');
-    } catch (err: any) {
-      setError(err.message);
-      setPhase('review');
+    const requestBody: any = { plan, headless };
+    
+    if (useExistingBrowser && cdpEndpoint) {
+      requestBody.cdpEndpoint = cdpEndpoint;
     }
-  }, [plan, headless, useExistingBrowser, cdpEndpoint]);
+
+    await connectToProgressStream('/api/execute/stream', requestBody);
+  }, [plan, headless, useExistingBrowser, cdpEndpoint, connectToProgressStream]);
 
   const reset = useCallback(() => {
     setPhase('input');
@@ -741,7 +823,7 @@ export default function Home() {
             border: '1px solid rgba(255, 255, 255, 0.1)',
           }}>
             <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>
-              ⚡ Executing Test...
+              ⚡ 执行测试中...
             </h2>
             
             {pausedForLogin && (
@@ -778,19 +860,179 @@ export default function Home() {
                 </button>
               </div>
             )}
-            
+
+            <div style={{
+              background: 'rgba(0, 0, 0, 0.3)',
+              borderRadius: '8px',
+              padding: '1rem',
+              marginBottom: '1rem',
+            }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                marginBottom: '0.5rem',
+              }}>
+                <span style={{ fontWeight: '500' }}>执行进度</span>
+                <span style={{ color: '#22c55e', fontWeight: 'bold' }}>
+                  {progressData.progress.toFixed(1)}%
+                </span>
+              </div>
+              
+              <div style={{
+                width: '100%',
+                height: '12px',
+                background: 'rgba(255, 255, 255, 0.1)',
+                borderRadius: '6px',
+                overflow: 'hidden',
+                marginBottom: '1rem',
+              }}>
+                <div style={{
+                  width: `${progressData.progress}%`,
+                  height: '100%',
+                  background: 'linear-gradient(90deg, #22c55e 0%, #16a34a 100%)',
+                  transition: 'width 0.3s ease',
+                  borderRadius: '6px',
+                }} />
+              </div>
+              
+              {progressData.totalSteps > 0 && (
+                <div style={{ marginTop: '0.5rem' }}>
+                  <div style={{ color: '#94a3b8', fontSize: '0.9rem' }}>
+                    当前步骤: {progressData.currentStep} / {progressData.totalSteps}
+                  </div>
+                  {progressData.currentStepDescription && (
+                    <div style={{ 
+                      color: '#fff', 
+                      marginTop: '0.25rem',
+                      padding: '0.5rem',
+                      background: 'rgba(34, 197, 94, 0.1)',
+                      borderRadius: '4px',
+                      border: '1px solid rgba(34, 197, 94, 0.3)',
+                    }}>
+                      📝 {progressData.currentStepDescription}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {progressData.stepStatuses.length > 0 && (
+              <div style={{
+                background: 'rgba(0, 0, 0, 0.3)',
+                borderRadius: '8px',
+                padding: '1rem',
+                marginBottom: '1rem',
+              }}>
+                <h3 style={{ marginBottom: '0.75rem', fontSize: '1rem' }}>
+                  📊 步骤执行状态
+                </h3>
+                <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                  {progressData.stepStatuses.map((status, index) => (
+                    <div key={index} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                      padding: '0.5rem',
+                      marginBottom: '0.5rem',
+                      background: status.status === 'passed' 
+                        ? 'rgba(34, 197, 94, 0.1)' 
+                        : status.status === 'failed'
+                          ? 'rgba(239, 68, 68, 0.1)'
+                          : 'rgba(249, 115, 22, 0.1)',
+                      borderRadius: '6px',
+                      border: `1px solid ${
+                        status.status === 'passed' 
+                          ? 'rgba(34, 197, 94, 0.3)' 
+                          : status.status === 'failed'
+                            ? 'rgba(239, 68, 68, 0.3)'
+                            : 'rgba(249, 115, 22, 0.3)'
+                      }`,
+                    }}>
+                      <span style={{ fontSize: '1.2rem' }}>
+                        {getStatusIcon(status.status)}
+                      </span>
+                      <span style={{ fontWeight: '500' }}>
+                        步骤 {status.step + 1}
+                      </span>
+                      <span style={{ 
+                        color: '#94a3b8', 
+                        fontSize: '0.85rem',
+                        marginLeft: 'auto',
+                      }}>
+                        {status.duration}ms
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {progressData.screenshots.length > 0 && (
+              <div style={{
+                background: 'rgba(0, 0, 0, 0.3)',
+                borderRadius: '8px',
+                padding: '1rem',
+                marginBottom: '1rem',
+              }}>
+                <h3 style={{ marginBottom: '0.75rem', fontSize: '1rem' }}>
+                  📸 实时截图
+                </h3>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                  gap: '0.5rem',
+                }}>
+                  {progressData.screenshots.slice(-4).map((screenshot, index) => (
+                    <div key={index} style={{
+                      position: 'relative',
+                      borderRadius: '6px',
+                      overflow: 'hidden',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                    }}>
+                      <img 
+                        src={screenshot}
+                        alt={`Screenshot ${index + 1}`}
+                        style={{
+                          width: '100%',
+                          height: 'auto',
+                          display: 'block',
+                        }}
+                      />
+                      <div style={{
+                        position: 'absolute',
+                        bottom: '0',
+                        left: '0',
+                        right: '0',
+                        padding: '0.25rem 0.5rem',
+                        background: 'rgba(0, 0, 0, 0.7)',
+                        color: '#fff',
+                        fontSize: '0.75rem',
+                      }}>
+                        截图 {progressData.screenshots.length - 4 + index + 1}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div style={{
               background: 'rgba(0, 0, 0, 0.3)',
               borderRadius: '8px',
               padding: '1rem',
               fontFamily: 'monospace',
               fontSize: '0.9rem',
-              maxHeight: '400px',
+              maxHeight: '300px',
               overflowY: 'auto',
             }}>
-              {executionLogs.map((log, index) => (
+              <h3 style={{ marginBottom: '0.5rem', fontSize: '1rem' }}>
+                📝 实时日志
+              </h3>
+              {progressData.liveLogs.map((log, index) => (
                 <div key={index} style={{ marginBottom: '0.25rem' }}>
-                  <span style={{ color: '#6b7280' }}>[{new Date().toLocaleTimeString()}]</span> {log}
+                  <span style={{ color: '#6b7280' }}>
+                    [{new Date().toLocaleTimeString()}]
+                  </span> {log}
                 </div>
               ))}
             </div>
