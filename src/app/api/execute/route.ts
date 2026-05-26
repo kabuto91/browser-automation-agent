@@ -3,7 +3,7 @@ import { BrowserManager } from '@/browser/browserManager';
 import { Executor } from '@/agent/executor';
 import { Observer } from '@/agent/observer';
 import { Replanner } from '@/agent/replanner';
-import { LLMClient } from '@/llm/llmClient';
+import { getLLMClient } from '@/llm/llmClient';
 import { Reporter } from '@/report/reporter';
 import { TestStep, TestPlan } from '@/types';
 
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     };
 
     const browserManager = new BrowserManager();
-    const llm = new LLMClient();
+    const llm = getLLMClient();
     const reporter = new Reporter();
     const replanner = new Replanner(llm);
 

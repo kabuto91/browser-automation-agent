@@ -1,6 +1,6 @@
 import { Page } from 'playwright';
 import { PageState, InteractiveElement } from '../types';
-import { config } from '../config';
+import { config, ensureDirectoriesOnce } from '../config';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -70,6 +70,15 @@ export interface InputInfo {
 export class Observer {
   constructor(private page: Page) {}
 
+  private lastPageSnapshot: PageSnapshot | null = null;
+  private lastUpdateTime: number = 0;
+  private lastUrl: string = '';
+  private cacheConfig = {
+    enabled: true,
+    ttl: 5000,
+    forceRefreshOnNavigation: true,
+  };
+
   async getPageState(): Promise<PageState> {
     const url = this.page.url();
     const title = await this.page.title();
@@ -89,7 +98,24 @@ export class Observer {
   }
 
   async getDetailedPageSnapshot(): Promise<PageSnapshot> {
-    const url = this.page.url();
+    const currentUrl = this.page.url();
+    const now = Date.now();
+
+    if (this.cacheConfig.enabled && this.lastPageSnapshot) {
+      const isUrlChanged = currentUrl !== this.lastUrl;
+      const isCacheExpired = now - this.lastUpdateTime > this.cacheConfig.ttl;
+
+      if (!isUrlChanged && !isCacheExpired) {
+        console.log('[Observer] Using cached page snapshot');
+        return this.lastPageSnapshot;
+      }
+
+      if (isUrlChanged && this.cacheConfig.forceRefreshOnNavigation) {
+        console.log('[Observer] URL changed, refreshing snapshot');
+      }
+    }
+
+    const url = currentUrl;
     const title = await this.page.title();
     
     const elements = await this.extractDetailedElements();
@@ -114,7 +140,7 @@ export class Observer {
       required: false,
     }));
 
-    return {
+    const snapshot: PageSnapshot = {
       url,
       title,
       elements,
@@ -123,6 +149,12 @@ export class Observer {
       buttons,
       inputs,
     };
+
+    this.lastPageSnapshot = snapshot;
+    this.lastUpdateTime = Date.now();
+    this.lastUrl = url;
+
+    return snapshot;
   }
 
   async getPageSnapshotForLLM(): Promise<string> {
@@ -358,12 +390,9 @@ Title: ${snapshot.title}
   }
 
   async takeScreenshot(name: string): Promise<string> {
+    ensureDirectoriesOnce();
+    
     const dir = config.screenshot.dir;
-    
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    
     const fileName = `${name}-${Date.now()}.png`;
     const filePath = path.join(dir, fileName);
     
@@ -376,12 +405,9 @@ Title: ${snapshot.title}
   }
 
   async takeFullPageScreenshot(name: string): Promise<string> {
+    ensureDirectoriesOnce();
+    
     const dir = config.screenshot.dir;
-    
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    
     const fileName = `${name}-full-${Date.now()}.png`;
     const filePath = path.join(dir, fileName);
     

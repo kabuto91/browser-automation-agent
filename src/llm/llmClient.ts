@@ -6,11 +6,52 @@ export interface ChatMessage {
   content: string;
 }
 
+interface CacheEntry {
+  result: string;
+  timestamp: number;
+  ttl: number;
+}
+
+interface CacheConfig {
+  enabled: boolean;
+  ttl: number;
+  maxSize: number;
+}
+
+interface QueueConfig {
+  maxConcurrent: number;
+  retryDelay: number;
+  maxRetries: number;
+}
+
+interface QueueItem {
+  id: string;
+  execute: () => Promise<string>;
+  resolve: (value: string) => void;
+  reject: (error: Error) => void;
+  retries: number;
+  priority: number;
+}
+
 export class LLMClient {
   private client: OpenAI;
   private model: string;
   private maxTokens: number;
   private provider: 'anthropic' | 'openai' | 'qwen';
+  private cache: Map<string, CacheEntry> = new Map();
+  private cacheConfig: CacheConfig = {
+    enabled: true,
+    ttl: 3600000,
+    maxSize: 100,
+  };
+  private requestQueue: QueueItem[] = [];
+  private activeRequests: number = 0;
+  private queueConfig: QueueConfig = {
+    maxConcurrent: 3,
+    retryDelay: 1000,
+    maxRetries: 3,
+  };
+  private isProcessingQueue: boolean = false;
 
   constructor() {
     this.provider = config.llm.provider;
@@ -42,19 +83,180 @@ export class LLMClient {
     });
   }
 
-  async chat(systemPrompt: string, userMessage: string): Promise<string> {
-    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userMessage },
-    ];
+  private addToQueue(
+    execute: () => Promise<string>,
+    priority: number = 0
+  ): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const item: QueueItem = {
+        id: `queue-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        execute,
+        resolve,
+        reject,
+        retries: 0,
+        priority,
+      };
 
-    const response = await this.client.chat.completions.create({
-      model: this.model,
-      messages,
-      max_tokens: this.maxTokens,
+      this.requestQueue.push(item);
+      this.requestQueue.sort((a, b) => b.priority - a.priority);
+
+      this.processQueue();
     });
+  }
 
-    return response.choices[0]?.message?.content || '';
+  private async processQueue(): void {
+    if (this.isProcessingQueue) {
+      return;
+    }
+
+    this.isProcessingQueue = true;
+
+    while (
+      this.requestQueue.length > 0 &&
+      this.activeRequests < this.queueConfig.maxConcurrent
+    ) {
+      const item = this.requestQueue.shift();
+      if (!item) break;
+
+      this.activeRequests++;
+
+      try {
+        const result = await item.execute();
+        item.resolve(result);
+      } catch (error: any) {
+        if (item.retries < this.queueConfig.maxRetries) {
+          item.retries++;
+          console.log(`[LLMClient] Retrying request (attempt ${item.retries}/${this.queueConfig.maxRetries})`);
+          
+          await new Promise(resolve => 
+            setTimeout(resolve, this.queueConfig.retryDelay * item.retries)
+          );
+          
+          this.requestQueue.unshift(item);
+          this.requestQueue.sort((a, b) => b.priority - a.priority);
+        } else {
+          item.reject(error);
+        }
+      } finally {
+        this.activeRequests--;
+      }
+    }
+
+    this.isProcessingQueue = false;
+
+    if (this.requestQueue.length > 0 && this.activeRequests < this.queueConfig.maxConcurrent) {
+      this.processQueue();
+    }
+  }
+
+  getQueueStats(): { queueLength: number; activeRequests: number; maxConcurrent: number } {
+    return {
+      queueLength: this.requestQueue.length,
+      activeRequests: this.activeRequests,
+      maxConcurrent: this.queueConfig.maxConcurrent,
+    };
+  }
+
+  private generateCacheKey(systemPrompt: string, userMessage: string): string {
+    const combined = `${systemPrompt}:${userMessage}`;
+    const hash = combined.length > 200 
+      ? combined.slice(0, 100) + combined.slice(-100)
+      : combined;
+    return hash;
+  }
+
+  private getCached(key: string): string | null {
+    if (!this.cacheConfig.enabled) {
+      return null;
+    }
+
+    const entry = this.cache.get(key);
+    if (!entry) {
+      return null;
+    }
+
+    const now = Date.now();
+    if (now - entry.timestamp > entry.ttl) {
+      this.cache.delete(key);
+      return null;
+    }
+
+    return entry.result;
+  }
+
+  private setCache(key: string, result: string): void {
+    if (!this.cacheConfig.enabled) {
+      return;
+    }
+
+    if (this.cache.size >= this.cacheConfig.maxSize) {
+      this.cleanExpiredCache();
+      
+      if (this.cache.size >= this.cacheConfig.maxSize) {
+        const oldestKey = this.cache.keys().next().value;
+        if (oldestKey) {
+          this.cache.delete(oldestKey);
+        }
+      }
+    }
+
+    this.cache.set(key, {
+      result,
+      timestamp: Date.now(),
+      ttl: this.cacheConfig.ttl,
+    });
+  }
+
+  private cleanExpiredCache(): void {
+    const now = Date.now();
+    for (const [key, entry] of this.cache.entries()) {
+      if (now - entry.timestamp > entry.ttl) {
+        this.cache.delete(key);
+      }
+    }
+  }
+
+  getCacheStats(): { size: number; maxSize: number; enabled: boolean } {
+    return {
+      size: this.cache.size,
+      maxSize: this.cacheConfig.maxSize,
+      enabled: this.cacheConfig.enabled,
+    };
+  }
+
+  clearCache(): void {
+    this.cache.clear();
+  }
+
+  async chat(systemPrompt: string, userMessage: string): Promise<string> {
+    const cacheKey = this.generateCacheKey(systemPrompt, userMessage);
+    
+    const cachedResult = this.getCached(cacheKey);
+    if (cachedResult) {
+      console.log('[LLMClient] Using cached response');
+      return cachedResult;
+    }
+
+    const executeRequest = async (): Promise<string> => {
+      const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userMessage },
+      ];
+
+      const response = await this.client.chat.completions.create({
+        model: this.model,
+        messages,
+        max_tokens: this.maxTokens,
+      });
+
+      return response.choices[0]?.message?.content || '';
+    };
+
+    const result = await this.addToQueue(executeRequest);
+    
+    this.setCache(cacheKey, result);
+    
+    return result;
   }
 
   async chatWithHistory(
@@ -96,5 +298,23 @@ export class LLMClient {
 
     const content = response.choices[0]?.message?.content || '{}';
     return JSON.parse(content) as T;
+  }
+}
+
+let globalLLMClientInstance: LLMClient | null = null;
+
+export function getLLMClient(): LLMClient {
+  if (!globalLLMClientInstance) {
+    globalLLMClientInstance = new LLMClient();
+    console.log('[LLMClient] Created global singleton instance');
+  }
+  return globalLLMClientInstance;
+}
+
+export function resetLLMClient(): void {
+  if (globalLLMClientInstance) {
+    globalLLMClientInstance.clearCache();
+    globalLLMClientInstance = null;
+    console.log('[LLMClient] Reset global instance');
   }
 }

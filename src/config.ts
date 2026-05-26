@@ -75,9 +75,27 @@ export function ensureDirectories(): void {
   
   const fs = require('fs');
   const dirs = [config.screenshot.dir, config.report.outputDir];
+  
   for (const dir of dirs) {
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+    try {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+        console.log(`[Config] Created directory: ${dir}`);
+      }
+    } catch (error: any) {
+      console.error(`[Config] Failed to create directory ${dir}:`, error.message);
     }
   }
+}
+
+let directoriesEnsured = false;
+
+export function ensureDirectoriesOnce(): void {
+  if (directoriesEnsured) {
+    return;
+  }
+  
+  ensureDirectories();
+  directoriesEnsured = true;
+  console.log('[Config] Directories ensured (one-time check)');
 }

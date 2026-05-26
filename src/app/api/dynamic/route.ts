@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { globalBrowserManager } from '@/browser/globalBrowserManager';
 import { DynamicExecutor } from '@/agent/dynamicExecutor';
-import { LLMClient } from '@/llm/llmClient';
+import { getLLMClient } from '@/llm/llmClient';
 import { BrowserAction } from '@/types';
 
 export const maxDuration = 300;
@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const llm = new LLMClient();
+    const llm = getLLMClient();
 
     let page;
     let currentSessionId: string;
