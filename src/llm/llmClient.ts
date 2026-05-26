@@ -228,6 +228,21 @@ export class LLMClient {
     this.cache.clear();
   }
 
+  dispose(): void {
+    this.clearCache();
+    this.requestQueue = [];
+    this.isProcessingQueue = false;
+    
+    console.log('[LLMClient] All resources cleaned up');
+  }
+
+  getQueueStatus(): { queueLength: number; isProcessing: boolean } {
+    return {
+      queueLength: this.requestQueue.length,
+      isProcessing: this.isProcessingQueue,
+    };
+  }
+
   async chat(systemPrompt: string, userMessage: string): Promise<string> {
     const cacheKey = this.generateCacheKey(systemPrompt, userMessage);
     

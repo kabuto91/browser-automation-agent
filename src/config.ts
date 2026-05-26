@@ -1,11 +1,24 @@
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 
-const envPath = process.env.NODE_ENV === 'production'
-  ? path.join(process.cwd(), '.env')
-  : path.join(process.cwd(), '.env');
+let dotenvLoaded = false;
 
-dotenv.config({ path: envPath });
+function loadDotenvOnce(): void {
+  if (dotenvLoaded) {
+    return;
+  }
+
+  const envPath = process.env.NODE_ENV === 'production'
+    ? path.join(process.cwd(), '.env')
+    : path.join(process.cwd(), '.env');
+
+  dotenv.config({ path: envPath });
+  dotenvLoaded = true;
+  
+  console.log('[Config] Dotenv loaded (one-time initialization)');
+}
+
+loadDotenvOnce();
 
 export interface BrowserConfig {
   headless: boolean;

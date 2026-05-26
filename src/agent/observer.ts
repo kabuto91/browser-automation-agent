@@ -78,6 +78,8 @@ export class Observer {
     ttl: 5000,
     forceRefreshOnNavigation: true,
   };
+  private eventListeners: Map<string, Function[]> = new Map();
+  private isDisposed: boolean = false;
 
   async getPageState(): Promise<PageState> {
     const url = this.page.url();
@@ -420,33 +422,89 @@ Title: ${snapshot.title}
   }
 
   async getConsoleMessages(): Promise<string[]> {
+    if (this.isDisposed) {
+      return [];
+    }
+
     const messages: string[] = [];
     
-    this.page.on('console', msg => {
+    const handler = (msg: any) => {
       messages.push(`[${msg.type()}] ${msg.text()}`);
-    });
+    };
+    
+    this.page.on('console', handler);
+    this.addEventListener('console', handler);
     
     return messages;
   }
 
   async getErrors(): Promise<string[]> {
+    if (this.isDisposed) {
+      return [];
+    }
+
     const errors: string[] = [];
     
-    this.page.on('pageerror', error => {
+    const handler = (error: any) => {
       errors.push(error.message);
-    });
+    };
+    
+    this.page.on('pageerror', handler);
+    this.addEventListener('pageerror', handler);
     
     return errors;
   }
 
   async getNetworkRequests(): Promise<string[]> {
+    if (this.isDisposed) {
+      return [];
+    }
+
     const requests: string[] = [];
     
-    this.page.on('request', request => {
+    const handler = (request: any) => {
       requests.push(`${request.method()} ${request.url()}`);
-    });
+    };
+    
+    this.page.on('request', handler);
+    this.addEventListener('request', handler);
     
     return requests;
+  }
+
+  private addEventListener(event: string, handler: Function): void {
+    if (!this.eventListeners.has(event)) {
+      this.eventListeners.set(event, []);
+    }
+    
+    this.eventListeners.get(event)?.push(handler);
+  }
+
+  dispose(): void {
+    if (this.isDisposed) {
+      return;
+    }
+
+    this.isDisposed = true;
+
+    for (const [event, handlers] of this.eventListeners.entries()) {
+      for (const handler of handlers) {
+        try {
+          this.page.off(event, handler as any);
+        } catch (error) {
+          console.error(`[Observer] Failed to remove listener for ${event}:`, error);
+        }
+      }
+    }
+
+    this.eventListeners.clear();
+    this.lastPageSnapshot = null;
+    
+    console.log('[Observer] All event listeners cleaned up');
+  }
+
+  isObserverDisposed(): boolean {
+    return this.isDisposed;
   }
 
   async getAccessibilityTree(): Promise<string> {
