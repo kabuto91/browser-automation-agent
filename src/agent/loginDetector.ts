@@ -10,7 +10,60 @@ export interface LoginDetectionResult {
 export class LoginDetector {
   constructor(private llm: LLMClient) {}
 
+  private detectionCache = new Map<string, { result: LoginDetectionResult; timestamp: number }>();
+  private cacheConfig = {
+    enabled: true,
+    ttl: 30000,
+    maxSize: 50,
+  };
+
+  private getCached(pageContent: string): LoginDetectionResult | null {
+    if (!this.cacheConfig.enabled) {
+      return null;
+    }
+
+    const cacheKey = pageContent.slice(0, 200);
+    const cached = this.detectionCache.get(cacheKey);
+
+    if (!cached) {
+      return null;
+    }
+
+    const now = Date.now();
+    if (now - cached.timestamp > this.cacheConfig.ttl) {
+      this.detectionCache.delete(cacheKey);
+      return null;
+    }
+
+    return cached.result;
+  }
+
+  private setCache(pageContent: string, result: LoginDetectionResult): void {
+    if (!this.cacheConfig.enabled) {
+      return;
+    }
+
+    if (this.detectionCache.size >= this.cacheConfig.maxSize) {
+      const oldestKey = this.detectionCache.keys().next().value;
+      if (oldestKey) {
+        this.detectionCache.delete(oldestKey);
+      }
+    }
+
+    const cacheKey = pageContent.slice(0, 200);
+    this.detectionCache.set(cacheKey, {
+      result,
+      timestamp: Date.now(),
+    });
+  }
+
   async detectLoginRequired(pageContent: string): Promise<LoginDetectionResult> {
+    const cachedResult = this.getCached(pageContent);
+    if (cachedResult) {
+      console.log('[LoginDetector] Using cached detection result');
+      return cachedResult;
+    }
+
     const systemPrompt = `You are a web page analyzer. Your task is to determine if a web page requires user login to proceed.
 
 Analyze the page content and look for:
@@ -50,12 +103,16 @@ Only respond with the JSON, no other text.`;
 
       const result = JSON.parse(jsonMatch[0]);
       
-      return {
+      const detectionResult: LoginDetectionResult = {
         needsLogin: result.needsLogin || false,
         confidence: result.confidence || 0,
         reason: result.reason || '',
         loginElements: result.loginElements || [],
       };
+
+      this.setCache(pageContent, detectionResult);
+      
+      return detectionResult;
     } catch (error: any) {
       console.error('[LoginDetector] Detection failed:', error.message);
       return {

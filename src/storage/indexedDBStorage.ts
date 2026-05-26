@@ -14,14 +14,19 @@ export interface SavedTestFlow {
 }
 
 const DB_NAME = 'BrowserAutomationDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = 'testFlows';
 
 class IndexedDBStorage {
   private db: IDBDatabase | null = null;
+  private initPromise: Promise<void> | null = null;
 
   async init(): Promise<void> {
-    return new Promise((resolve, reject) => {
+    if (this.initPromise) {
+      return this.initPromise;
+    }
+
+    this.initPromise = new Promise((resolve, reject) => {
       const request = indexedDB.open(DB_NAME, DB_VERSION);
 
       request.onerror = () => {
@@ -30,6 +35,7 @@ class IndexedDBStorage {
 
       request.onsuccess = () => {
         this.db = request.result;
+        console.log('[IndexedDB] Database initialized successfully');
         resolve();
       };
 
@@ -42,9 +48,21 @@ class IndexedDBStorage {
           store.createIndex('createdAt', 'createdAt', { unique: false });
           store.createIndex('lastUsed', 'lastUsed', { unique: false });
           store.createIndex('useCount', 'useCount', { unique: false });
+          store.createIndex('name_desc', ['name', 'description'], { unique: false });
+          console.log('[IndexedDB] Created object store and indexes');
+        } else {
+          const transaction = event.target.transaction;
+          const store = transaction.objectStore(STORE_NAME);
+          
+          if (!store.indexNames.contains('name_desc')) {
+            store.createIndex('name_desc', ['name', 'description'], { unique: false });
+            console.log('[IndexedDB] Added compound index');
+          }
         }
       };
     });
+
+    return this.initPromise;
   }
 
   private ensureDB(): IDBDatabase {
@@ -136,40 +154,117 @@ class IndexedDBStorage {
   }
 
   async searchFlows(query: string, tags?: string[]): Promise<SavedTestFlow[]> {
-    const flows = await this.getAllFlows();
+    const db = this.ensureDB();
     
-    let results = flows;
-
-    if (query) {
-      const lowerQuery = query.toLowerCase();
-      results = results.filter(f =>
-        f.name.toLowerCase().includes(lowerQuery) ||
-        f.description.toLowerCase().includes(lowerQuery) ||
-        f.tags.some(t => t.toLowerCase().includes(lowerQuery))
-      );
-    }
-
-    if (tags && tags.length > 0) {
-      results = results.filter(f =>
-        tags.some(tag => f.tags.includes(tag))
-      );
-    }
-
-    return results;
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([STORE_NAME], 'readonly');
+      const store = transaction.objectStore(STORE_NAME);
+      
+      if (query) {
+        const lowerQuery = query.toLowerCase();
+        const upperQuery = query.toLowerCase() + '\uffff';
+        
+        const index = store.index('name');
+        const range = IDBKeyRange.bound(lowerQuery, upperQuery);
+        const request = index.getAll(range);
+        
+        request.onsuccess = () => {
+          let results = request.result || [];
+          
+          results = results.filter(f =>
+            f.name.toLowerCase().includes(query.toLowerCase()) ||
+            f.description.toLowerCase().includes(query.toLowerCase()) ||
+            f.tags.some(t => t.toLowerCase().includes(query.toLowerCase()))
+          );
+          
+          if (tags && tags.length > 0) {
+            results = results.filter(f =>
+              tags.some(tag => f.tags.includes(tag))
+            );
+          }
+          
+          resolve(results);
+        };
+        
+        request.onerror = () => {
+          reject(new Error('Failed to search flows'));
+        };
+      } else {
+        const request = store.getAll();
+        
+        request.onsuccess = () => {
+          let results = request.result || [];
+          
+          if (tags && tags.length > 0) {
+            results = results.filter(f =>
+              tags.some(tag => f.tags.includes(tag))
+            );
+          }
+          
+          resolve(results);
+        };
+        
+        request.onerror = () => {
+          reject(new Error('Failed to search flows'));
+        };
+      }
+    });
   }
 
   async getPopularFlows(limit: number = 10): Promise<SavedTestFlow[]> {
-    const flows = await this.getAllFlows();
-    return flows
-      .sort((a, b) => b.useCount - a.useCount)
-      .slice(0, limit);
+    const db = this.ensureDB();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([STORE_NAME], 'readonly');
+      const store = transaction.objectStore(STORE_NAME);
+      const index = store.index('useCount');
+      
+      const request = index.openCursor(null, 'prev');
+      const results: SavedTestFlow[] = [];
+      
+      request.onsuccess = (event: any) => {
+        const cursor = event.target.result;
+        
+        if (cursor && results.length < limit) {
+          results.push(cursor.value);
+          cursor.continue();
+        } else {
+          resolve(results);
+        }
+      };
+      
+      request.onerror = () => {
+        reject(new Error('Failed to get popular flows'));
+      };
+    });
   }
 
   async getRecentFlows(limit: number = 10): Promise<SavedTestFlow[]> {
-    const flows = await this.getAllFlows();
-    return flows
-      .sort((a, b) => new Date(b.lastUsed).getTime() - new Date(a.lastUsed).getTime())
-      .slice(0, limit);
+    const db = this.ensureDB();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([STORE_NAME], 'readonly');
+      const store = transaction.objectStore(STORE_NAME);
+      const index = store.index('lastUsed');
+      
+      const request = index.openCursor(null, 'prev');
+      const results: SavedTestFlow[] = [];
+      
+      request.onsuccess = (event: any) => {
+        const cursor = event.target.result;
+        
+        if (cursor && results.length < limit) {
+          results.push(cursor.value);
+          cursor.continue();
+        } else {
+          resolve(results);
+        }
+      };
+      
+      request.onerror = () => {
+        reject(new Error('Failed to get recent flows'));
+      };
+    });
   }
 
   async exportFlows(): Promise<string> {
@@ -186,20 +281,88 @@ class IndexedDBStorage {
         throw new Error('Invalid data format');
       }
 
-      let importedCount = 0;
-      for (const flow of flows) {
-        try {
-          await this.saveFlow(flow);
-          importedCount++;
-        } catch (error) {
-          console.error('Failed to import flow:', flow.id, error);
-        }
-      }
-
-      return importedCount;
+      return await this.saveFlowsBatch(flows);
     } catch (error) {
       throw new Error('Failed to parse import data');
     }
+  }
+
+  async saveFlowsBatch(flows: SavedTestFlow[]): Promise<number> {
+    const db = this.ensureDB();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      
+      let importedCount = 0;
+      let completed = 0;
+      
+      flows.forEach((flow, index) => {
+        const request = store.put(flow);
+        
+        request.onsuccess = () => {
+          importedCount++;
+          completed++;
+          
+          if (completed === flows.length) {
+            console.log(`[IndexedDB] Batch saved ${importedCount} flows`);
+            resolve(importedCount);
+          }
+        };
+        
+        request.onerror = () => {
+          console.error('[IndexedDB] Failed to save flow:', flow.id);
+          completed++;
+          
+          if (completed === flows.length) {
+            resolve(importedCount);
+          }
+        };
+      });
+      
+      transaction.onerror = () => {
+        reject(new Error('Batch transaction failed'));
+      };
+    });
+  }
+
+  async deleteFlowsBatch(ids: string[]): Promise<number> {
+    const db = this.ensureDB();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      
+      let deletedCount = 0;
+      let completed = 0;
+      
+      ids.forEach((id, index) => {
+        const request = store.delete(id);
+        
+        request.onsuccess = () => {
+          deletedCount++;
+          completed++;
+          
+          if (completed === ids.length) {
+            console.log(`[IndexedDB] Batch deleted ${deletedCount} flows`);
+            resolve(deletedCount);
+          }
+        };
+        
+        request.onerror = () => {
+          console.error('[IndexedDB] Failed to delete flow:', id);
+          completed++;
+          
+          if (completed === ids.length) {
+            resolve(deletedCount);
+          }
+        };
+      });
+      
+      transaction.onerror = () => {
+        reject(new Error('Batch delete transaction failed'));
+      };
+    });
   }
 
   async clearAll(): Promise<void> {

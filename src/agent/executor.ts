@@ -19,7 +19,7 @@ export class Executor {
     try {
       await this.performAction(step.action);
 
-      await this.waitForPageStability();
+      await this.waitForPageStability(step.action);
 
       const assertionResults = await this.runAssertions(step.assertions || []);
       const allPassed = assertionResults.every(r => r.passed);
@@ -55,29 +55,50 @@ export class Executor {
     await this.actions.perform(action);
   }
 
-  private async waitForPageStability(): Promise<void> {
-    try {
-      await this.page.waitForLoadState('domcontentloaded', { timeout: 5000 });
-    } catch {
-      // Ignore timeout - page might already be loaded
-    }
+  private async waitForPageStability(action?: TestStep['action']): Promise<void> {
+    const isNavigationOrClick = action && (
+      action.type === 'navigate' || action.type === 'click'
+    );
 
-    try {
-      await this.page.waitForLoadState('networkidle', { timeout: 3000 });
-    } catch {
-      // Ignore timeout - some pages have continuous network activity
+    if (isNavigationOrClick) {
+      try {
+        await this.page.waitForLoadState('load', { timeout: 5000 });
+      } catch {
+        // Ignore timeout
+      }
+
+      try {
+        await this.page.waitForLoadState('networkidle', { timeout: 3000 });
+      } catch {
+        // Ignore timeout
+      }
+    } else {
+      try {
+        await this.page.waitForLoadState('domcontentloaded', { timeout: 2000 });
+      } catch {
+        // Ignore timeout
+      }
+
+      try {
+        await this.page.waitForLoadState('networkidle', { timeout: 1000 });
+      } catch {
+        // Ignore timeout
+      }
     }
   }
 
   private async runAssertions(
     assertions: Assertion[]
   ): Promise<AssertionResult[]> {
-    const results: AssertionResult[] = [];
-
-    for (const assertion of assertions) {
-      const result = await this.runSingleAssertion(assertion);
-      results.push(result);
+    if (assertions.length === 0) {
+      return [];
     }
+
+    const assertionPromises = assertions.map(assertion =>
+      this.runSingleAssertion(assertion)
+    );
+
+    const results = await Promise.all(assertionPromises);
 
     return results;
   }

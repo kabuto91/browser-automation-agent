@@ -15,9 +15,89 @@ interface ExecutionState {
   totalSteps: number;
   stepResults: any[];
   logs: string[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+interface StateConfig {
+  maxAge: number;
+  maxCapacity: number;
+  cleanupInterval: number;
 }
 
 const executionStates = new Map<string, ExecutionState>();
+const stateConfig: StateConfig = {
+  maxAge: 1800000,
+  maxCapacity: 100,
+  cleanupInterval: 60000,
+};
+
+let cleanupTimer: NodeJS.Timeout | null = null;
+
+function startCleanupTimer(): void {
+  if (cleanupTimer) {
+    clearInterval(cleanupTimer);
+  }
+
+  cleanupTimer = setInterval(() => {
+    cleanupExpiredStates();
+  }, stateConfig.cleanupInterval);
+
+  console.log('[ExecuteAPI] State cleanup timer started');
+}
+
+function cleanupExpiredStates(): void {
+  const now = Date.now();
+  const statesToRemove: string[] = [];
+
+  for (const [id, state] of executionStates.entries()) {
+    if (now - state.updatedAt > stateConfig.maxAge) {
+      statesToRemove.push(id);
+    }
+  }
+
+  for (const id of statesToRemove) {
+    executionStates.delete(id);
+  }
+
+  if (statesToRemove.length > 0) {
+    console.log(`[ExecuteAPI] Cleaned ${statesToRemove.length} expired states`);
+  }
+
+  if (executionStates.size > stateConfig.maxCapacity) {
+    const excessCount = executionStates.size - stateConfig.maxCapacity;
+    const oldestStates = Array.from(executionStates.entries())
+      .sort((a, b) => a[1].createdAt - b[1].createdAt)
+      .slice(0, excessCount);
+
+    for (const [id] of oldestStates) {
+      executionStates.delete(id);
+    }
+
+    console.log(`[ExecuteAPI] Removed ${excessCount} oldest states to maintain capacity`);
+  }
+}
+
+function addState(id: string, state: ExecutionState): void {
+  if (executionStates.size >= stateConfig.maxCapacity) {
+    cleanupExpiredStates();
+  }
+
+  executionStates.set(id, state);
+}
+
+function updateState(id: string, updates: Partial<ExecutionState>): void {
+  const state = executionStates.get(id);
+  if (state) {
+    executionStates.set(id, {
+      ...state,
+      ...updates,
+      updatedAt: Date.now(),
+    });
+  }
+}
+
+startCleanupTimer();
 
 export async function POST(request: NextRequest) {
   try {
@@ -32,12 +112,14 @@ export async function POST(request: NextRequest) {
 
     const executionId = `exec-${Date.now()}`;
     
-    executionStates.set(executionId, {
+    addState(executionId, {
       status: 'running',
       currentStep: 0,
       totalSteps: planData.steps.length,
       stepResults: [],
       logs: ['Starting test execution...'],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
     });
 
     const plan: TestPlan = {
@@ -100,8 +182,10 @@ export async function POST(request: NextRequest) {
 
         const state = executionStates.get(executionId);
         if (state) {
-          state.currentStep = stepIndex + 1;
-          state.stepResults = [...results];
+          updateState(executionId, {
+            currentStep: stepIndex + 1,
+            stepResults: [...results],
+          });
         }
 
         if (result.status !== 'passed') {
@@ -142,8 +226,10 @@ export async function POST(request: NextRequest) {
 
       const finalState = executionStates.get(executionId);
       if (finalState) {
-        finalState.status = 'completed';
-        finalState.logs.push(`Test completed: ${report.conclusion}`);
+        updateState(executionId, {
+          status: 'completed',
+          logs: [...finalState.logs, `Test completed: ${report.conclusion}`],
+        });
       }
 
       await browserManager.close();
@@ -174,7 +260,9 @@ export async function POST(request: NextRequest) {
       
       const state = executionStates.get(executionId);
       if (state) {
-        state.status = 'error';
+        updateState(executionId, {
+          status: 'error',
+        });
       }
 
       await browserManager.close();
