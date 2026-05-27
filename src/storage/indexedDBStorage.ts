@@ -174,7 +174,7 @@ class IndexedDBStorage {
           results = results.filter(f =>
             f.name.toLowerCase().includes(query.toLowerCase()) ||
             f.description.toLowerCase().includes(query.toLowerCase()) ||
-            f.tags.some(t => t.toLowerCase().includes(query.toLowerCase()))
+            f.tags.some((t: string) => t.toLowerCase().includes(query.toLowerCase()))
           );
           
           if (tags && tags.length > 0) {

@@ -1,17 +1,17 @@
-import { getGlobalBrowserManager } from './browser/globalBrowserManager';
-import { getLLMClient } from './llm/llmClient';
+import { globalBrowserManager } from '../browser/globalBrowserManager';
+import { getLLMClient } from '../llm/llmClient';
 
 export interface SystemResourceStatus {
   browser: {
     activeInstances: number;
     maxInstances: number;
-    poolSize: number;
+    activeSession: string | null;
   };
   llm: {
     cacheSize: number;
     maxCacheSize: number;
     queueLength: number;
-    isProcessingQueue: boolean;
+    activeRequests: number;
   };
   memory: {
     heapUsed: number;
@@ -33,26 +33,26 @@ export class SystemResourceMonitor {
   }
 
   getStatus(): SystemResourceStatus {
-    const browserManager = getGlobalBrowserManager();
+    const browserManager = globalBrowserManager;
     const llmClient = getLLMClient();
 
-    const browserStatus = browserManager.getPoolStatus();
-    const llmCacheStatus = llmClient.getCacheStatus();
-    const llmQueueStatus = llmClient.getQueueStatus();
+    const browserStatus = browserManager.getPoolStats();
+    const llmCacheStatus = llmClient.getCacheStats();
+    const llmQueueStatus = llmClient.getQueueStats();
 
     const memoryUsage = process.memoryUsage();
 
     return {
       browser: {
-        activeInstances: browserStatus.activeInstances,
+        activeInstances: browserStatus.totalInstances,
         maxInstances: browserStatus.maxInstances,
-        poolSize: browserStatus.poolSize,
+        activeSession: browserStatus.activeSession,
       },
       llm: {
         cacheSize: llmCacheStatus.size,
         maxCacheSize: llmCacheStatus.maxSize,
         queueLength: llmQueueStatus.queueLength,
-        isProcessingQueue: llmQueueStatus.isProcessing,
+        activeRequests: llmQueueStatus.activeRequests,
       },
       memory: {
         heapUsed: memoryUsage.heapUsed,
@@ -68,8 +68,8 @@ export class SystemResourceMonitor {
     const status = this.getStatus();
     
     console.log('[SystemResourceMonitor] Resource Status:');
-    console.log(`  Browser: ${status.browser.activeInstances}/${status.browser.maxInstances} active, pool size: ${status.browser.poolSize}`);
-    console.log(`  LLM Cache: ${status.llm.cacheSize}/${status.llm.maxCacheSize} entries, queue: ${status.llm.queueLength}`);
+    console.log(`  Browser: ${status.browser.activeInstances}/${status.browser.maxInstances} active, session: ${status.browser.activeSession || 'none'}`);
+    console.log(`  LLM Cache: ${status.llm.cacheSize}/${status.llm.maxCacheSize} entries, queue: ${status.llm.queueLength}, active: ${status.llm.activeRequests}`);
     console.log(`  Memory: Heap ${Math.round(status.memory.heapUsed / 1024 / 1024)}MB / ${Math.round(status.memory.heapTotal / 1024 / 1024)}MB`);
   }
 
@@ -101,10 +101,8 @@ export class SystemResourceMonitor {
   }
 
   cleanup(): void {
-    const browserManager = getGlobalBrowserManager();
     const llmClient = getLLMClient();
 
-    browserManager.cleanupIdleInstances();
     llmClient.clearCache();
 
     console.log('[SystemResourceMonitor] Cleanup completed');

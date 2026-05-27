@@ -194,14 +194,11 @@ export async function POST(request: NextRequest) {
             duration: result.duration,
             conclusion: result.conclusion,
             stepResults: result.stepResults,
-            logs: result.logs,
-            stepDetails: result.stepDetails,
             finalPageState: result.finalPageState,
           },
           timestamp: Date.now()
         });
 
-        globalBrowserManager.scheduleCleanup(currentSessionId);
         controller.close();
 
       } catch (error: any) {

@@ -490,7 +490,7 @@ Title: ${snapshot.title}
     for (const [event, handlers] of this.eventListeners.entries()) {
       for (const handler of handlers) {
         try {
-          this.page.off(event, handler as any);
+          (this.page as any).off(event, handler);
         } catch (error) {
           console.error(`[Observer] Failed to remove listener for ${event}:`, error);
         }

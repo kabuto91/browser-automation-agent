@@ -104,7 +104,7 @@ export class LLMClient {
     });
   }
 
-  private async processQueue(): void {
+  private async processQueue(): Promise<void> {
     if (this.isProcessingQueue) {
       return;
     }

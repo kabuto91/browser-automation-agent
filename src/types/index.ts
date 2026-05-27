@@ -82,4 +82,6 @@ export interface ReplanDecision {
   needReplan: boolean;
   adjustedSteps?: TestStep[];
   action?: 'skip' | 'retry' | 'abort';
+  historicalCaseId?: string;
+  reason?: string;
 }

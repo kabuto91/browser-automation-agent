@@ -6,6 +6,8 @@ import { DynamicPlanner, ExecutionHistory } from './dynamicPlanner';
 import { LLMClient } from '../llm/llmClient';
 import { config } from '../config';
 import { LoginDetector } from './loginDetector';
+import { SuccessCaseStorage, FailureContext } from '../rag/successCaseStorage';
+import { CaseCollector } from '../rag/caseCollector';
 
 export interface DynamicExecutionResult {
   success: boolean;
@@ -37,6 +39,8 @@ export class DynamicExecutor {
   private loginDetector: LoginDetector;
   private paused: boolean = false;
   private executionState: ExecutionState | null = null;
+  private caseStorage: SuccessCaseStorage;
+  private caseCollector: CaseCollector;
 
   constructor(
     private page: Page,
@@ -46,6 +50,12 @@ export class DynamicExecutor {
     this.observer = new Observer(page);
     this.dynamicPlanner = new DynamicPlanner(llm, { maxSteps: 20 });
     this.loginDetector = new LoginDetector(llm);
+    this.caseStorage = SuccessCaseStorage.getInstance();
+    this.caseCollector = new CaseCollector(this.caseStorage, llm);
+    
+    this.caseStorage.init().catch(err => {
+      console.error('[DynamicExecutor] Failed to initialize case storage:', err);
+    });
   }
 
   pause() {
@@ -236,6 +246,10 @@ export class DynamicExecutor {
     }
 
     const finalPageState = await this.observer.getPageSnapshotForLLM();
+
+    if (conclusion === 'partial' || conclusion === 'passed') {
+      await this.collectSuccessCases(goal, history, results);
+    }
 
     return {
       success: conclusion === 'passed',
@@ -520,6 +534,10 @@ export class DynamicExecutor {
 
     const finalPageState = await this.observer.getPageSnapshotForLLM();
 
+    if (conclusion === 'partial' || conclusion === 'passed') {
+      await this.collectSuccessCases(goal, history, results);
+    }
+
     return {
       success: conclusion === 'passed',
       goal,
@@ -531,5 +549,104 @@ export class DynamicExecutor {
       conclusion,
       finalPageState,
     };
+  }
+
+  private async collectSuccessCases(
+    goal: string,
+    history: ExecutionHistory[],
+    results: StepResult[]
+  ): Promise<void> {
+    console.log('[DynamicExecutor] Collecting success cases from execution...');
+
+    const failedEntries = history.filter(h => h.result === 'error' || h.result === 'failed');
+    
+    if (failedEntries.length === 0) {
+      console.log('[DynamicExecutor] No failed steps found, skipping collection');
+      return;
+    }
+
+    for (const failedEntry of failedEntries) {
+      const failedIndex = history.indexOf(failedEntry);
+      const subsequentHistory = history.slice(failedIndex + 1);
+      const subsequentResults = results.slice(failedIndex + 1);
+
+      if (subsequentHistory.length >= 2) {
+        const successCount = subsequentResults.filter(r => r.status === 'passed').length;
+        
+        if (successCount >= 1) {
+          const failedStep = this.findStepByIndex(results, failedIndex);
+          
+          if (!failedStep) {
+            continue;
+          }
+
+          const failureContext: FailureContext = {
+            goal,
+            failedStep,
+            failureReason: failedEntry.error || 'Unknown error',
+            pageState: '',
+            errorType: this.classifyError(failedEntry.error || '')
+          };
+
+          const retrySteps = subsequentHistory.map(h => ({
+            id: `retry-step-${h.stepIndex}`,
+            description: h.description,
+            action: h.action,
+            expectedResult: '',
+            assertions: [],
+            timeout: 10000,
+          }));
+
+          await this.caseCollector.collectSuccessCase(
+            failureContext,
+            retrySteps,
+            subsequentResults
+          );
+        }
+      }
+    }
+  }
+
+  private findStepByIndex(results: StepResult[], index: number): TestStep | null {
+    const result = results[index];
+    
+    if (!result) {
+      return null;
+    }
+
+    return {
+      id: result.stepId,
+      description: result.description || 'Unknown step',
+      action: result.action || { type: 'wait', ms: 0 },
+      expectedResult: '',
+      assertions: [],
+      timeout: 10000
+    };
+  }
+
+  private classifyError(error: string): string {
+    if (error.includes('timeout') || error.includes('Timeout')) {
+      return 'timeout';
+    }
+    if (error.includes('selector') || error.includes('not found') || error.includes('No element')) {
+      return 'element-not-found';
+    }
+    if (error.includes('navigation') || error.includes('Navigation')) {
+      return 'navigation';
+    }
+    if (error.includes('click') || error.includes('Click')) {
+      return 'click-failure';
+    }
+    if (error.includes('fill') || error.includes('Fill')) {
+      return 'fill-failure';
+    }
+    if (error.includes('assertion') || error.includes('Assertion')) {
+      return 'assertion-failure';
+    }
+    if (error.includes('network') || error.includes('Network')) {
+      return 'network-error';
+    }
+    
+    return 'unknown';
   }
 }

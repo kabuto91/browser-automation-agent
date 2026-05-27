@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
     let remainingSteps = [...plan.steps];
     let stepIndex = 0;
 
-    const updateState = (log: string) => {
+    const addLog = (log: string) => {
       const state = executionStates.get(executionId);
       if (state) {
         state.logs.push(log);
@@ -175,7 +175,7 @@ export async function POST(request: NextRequest) {
       while (remainingSteps.length > 0) {
         const step = remainingSteps.shift()!;
         
-        updateState(`Executing step ${stepIndex + 1}: ${step.description}`);
+        addLog(`Executing step ${stepIndex + 1}: ${step.description}`);
 
         const result = await executor.executeStep(step);
         results.push(result);
@@ -189,7 +189,9 @@ export async function POST(request: NextRequest) {
         }
 
         if (result.status !== 'passed') {
-          updateState(`Step ${stepIndex + 1} ${result.status}: ${result.error || 'Assertion failed'}`);
+          updateState(executionId, {
+            logs: [`Step ${stepIndex + 1} ${result.status}: ${result.error || 'Assertion failed'}`],
+          });
 
           const pageState = await observer.getPageStateString();
           const decision = await replanner.evaluate(
@@ -200,17 +202,23 @@ export async function POST(request: NextRequest) {
           );
 
           if (decision.needReplan && decision.adjustedSteps) {
-            updateState(`Replanning: Adding ${decision.adjustedSteps.length} steps`);
+            updateState(executionId, {
+              logs: [`Replanning: Adding ${decision.adjustedSteps.length} steps`],
+            });
             remainingSteps = [...decision.adjustedSteps, ...remainingSteps];
           } else if (decision.action === 'retry') {
-            updateState('Retrying step...');
+            updateState(executionId, {
+              logs: ['Retrying step...'],
+            });
             remainingSteps.unshift(step);
           } else if (decision.action === 'abort') {
-            updateState('Aborting test execution');
+            updateState(executionId, {
+              logs: ['Aborting test execution'],
+            });
             break;
           }
         } else {
-          updateState(`Step ${stepIndex + 1} passed (${result.duration}ms)`);
+          addLog(`Step ${stepIndex + 1} passed (${result.duration}ms)`);
         }
 
         stepIndex++;
@@ -256,7 +264,7 @@ export async function POST(request: NextRequest) {
       });
 
     } catch (execError: any) {
-      updateState(`Execution error: ${execError.message}`);
+      addLog(`Execution error: ${execError.message}`);
       
       const state = executionStates.get(executionId);
       if (state) {

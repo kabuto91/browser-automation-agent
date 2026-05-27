@@ -65,6 +65,7 @@ export async function POST(request: NextRequest) {
             assertions: s.assertions || [],
             timeout: s.timeout || 10000,
           })),
+          createdAt: Date.now(),
         };
 
         const browserManager = new BrowserManager();
@@ -97,7 +98,7 @@ export async function POST(request: NextRequest) {
         }
 
         const observer = new Observer(page);
-        const executor = new Executor(page, observer);
+        const executor = new Executor(page);
         const replanner = new Replanner(getLLMClient());
         const reporter = new Reporter();
 
@@ -132,19 +133,19 @@ export async function POST(request: NextRequest) {
             });
 
             if (result.status !== 'passed') {
-              const pageState = await observer.getPageSnapshot();
-              const replanResult = await replanner.replan(
+              const pageState = await observer.getPageSnapshotForLLM();
+              const replanResult = await replanner.evaluate(
                 plan,
-                currentStep,
                 result,
+                results,
                 pageState
               );
 
-              if (replanResult.needsReplan && replanResult.newSteps.length > 0) {
-                remainingSteps = [...replanResult.newSteps, ...remainingSteps.slice(1)];
+              if (replanResult.needReplan && replanResult.adjustedSteps && replanResult.adjustedSteps.length > 0) {
+                remainingSteps = [...replanResult.adjustedSteps, ...remainingSteps.slice(1)];
                 sendEvent({
                   type: 'start',
-                  message: `重新规划步骤: 添加 ${replanResult.newSteps.length} 个新步骤`,
+                  message: `重新规划步骤: 添加 ${replanResult.adjustedSteps.length} 个新步骤`,
                   totalSteps: remainingSteps.length,
                   timestamp: Date.now()
                 });
@@ -178,7 +179,7 @@ export async function POST(request: NextRequest) {
         }
 
         const totalDuration = Date.now() - startTime;
-        const report = reporter.generateReport(plan, results, totalDuration);
+        const report = reporter.generateReport(plan.id, plan.goal, results, totalDuration);
 
         sendEvent({
           type: 'complete',

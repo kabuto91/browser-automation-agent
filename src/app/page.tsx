@@ -191,8 +191,7 @@ export default function Home() {
                   });
                   setProgressData(prev => ({
                     ...prev,
-                    liveLogs: [...prev.liveLogs, `⚠️ 需要登录: ${event.loginReason}`],
-                    liveLogs: [...prev.liveLogs, '💡 请在浏览器中手动完成登录，然后点击"继续测试"按钮'],
+                    liveLogs: [...prev.liveLogs, `⚠️ 需要登录: ${event.loginReason}`, '💡 请在浏览器中手动完成登录，然后点击"继续测试"按钮'],
                   }));
                   return;
 
