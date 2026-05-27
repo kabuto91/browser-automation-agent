@@ -83,6 +83,12 @@ export class SuccessCaseStorage {
     });
   }
 
+  private async ensureInitialized(): Promise<void> {
+    if (!this.initialized) {
+      await this.init();
+    }
+  }
+
   private ensureDB(): IDBDatabase {
     if (!this.db) {
       throw new Error('Database not initialized');
@@ -91,6 +97,7 @@ export class SuccessCaseStorage {
   }
 
   async saveSuccessCase(successCase: SuccessCase): Promise<void> {
+    await this.ensureInitialized();
     const db = this.ensureDB();
 
     return new Promise((resolve, reject) => {
@@ -114,6 +121,7 @@ export class SuccessCaseStorage {
     failureContext: FailureContext,
     limit: number = 10
   ): Promise<SuccessCase[]> {
+    await this.ensureInitialized();
     const db = this.ensureDB();
 
     return new Promise((resolve, reject) => {
@@ -137,6 +145,7 @@ export class SuccessCaseStorage {
   }
 
   async searchByKeywords(keywords: string[]): Promise<SuccessCase[]> {
+    await this.ensureInitialized();
     const db = this.ensureDB();
 
     return new Promise((resolve, reject) => {
@@ -168,6 +177,7 @@ export class SuccessCaseStorage {
   }
 
   async updateUseCount(caseId: string): Promise<void> {
+    await this.ensureInitialized();
     const db = this.ensureDB();
 
     return new Promise((resolve, reject) => {
@@ -201,6 +211,7 @@ export class SuccessCaseStorage {
   }
 
   async updateSuccessRate(caseId: string, success: boolean): Promise<void> {
+    await this.ensureInitialized();
     const db = this.ensureDB();
 
     return new Promise((resolve, reject) => {
@@ -238,6 +249,7 @@ export class SuccessCaseStorage {
   }
 
   async getAllCases(): Promise<SuccessCase[]> {
+    await this.ensureInitialized();
     const db = this.ensureDB();
 
     return new Promise((resolve, reject) => {
@@ -256,6 +268,7 @@ export class SuccessCaseStorage {
   }
 
   async deleteCase(caseId: string): Promise<void> {
+    await this.ensureInitialized();
     const db = this.ensureDB();
 
     return new Promise((resolve, reject) => {
