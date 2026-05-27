@@ -114,32 +114,60 @@ export async function POST(request: NextRequest) {
           timestamp: Date.now()
         });
 
-        const result = await executor.executeDynamically(
-          goal,
-          undefined,
-          async (result: any, index: number, pageState: string, action?: BrowserAction, description?: string) => {
-            sendEvent({
-              type: 'step_complete',
-              stepIndex: index,
-              status: result.status,
-              duration: result.duration,
-              screenshot: result.screenshot,
-              action: action,
-              stepDescription: description || `执行步骤 ${index + 1}`,
-              progress: (index / 20) * 100,
-              timestamp: Date.now()
-            });
-          },
-          (reason: string) => {
-            sendEvent({
-              type: 'login_required',
-              loginReason: reason,
-              sessionId: currentSessionId,
-              message: '请在浏览器中手动完成登录，然后继续测试',
-              timestamp: Date.now()
-            });
-          }
-        );
+        const result = predefinedSteps && predefinedSteps.length > 0
+          ? await executor.executeWithPredefinedSteps(
+              goal,
+              predefinedSteps,
+              undefined,
+              async (result: any, index: number, pageState: string, action?: BrowserAction, description?: string) => {
+                sendEvent({
+                  type: 'step_complete',
+                  stepIndex: index,
+                  status: result.status,
+                  duration: result.duration,
+                  screenshot: result.screenshot,
+                  action: action,
+                  stepDescription: description || `执行步骤 ${index + 1}`,
+                  progress: (index / predefinedSteps.length) * 100,
+                  timestamp: Date.now()
+                });
+              },
+              (reason: string) => {
+                sendEvent({
+                  type: 'login_required',
+                  loginReason: reason,
+                  sessionId: currentSessionId,
+                  message: '请在浏览器中手动完成登录，然后继续测试',
+                  timestamp: Date.now()
+                });
+              }
+            )
+          : await executor.executeDynamically(
+              goal,
+              undefined,
+              async (result: any, index: number, pageState: string, action?: BrowserAction, description?: string) => {
+                sendEvent({
+                  type: 'step_complete',
+                  stepIndex: index,
+                  status: result.status,
+                  duration: result.duration,
+                  screenshot: result.screenshot,
+                  action: action,
+                  stepDescription: description || `执行步骤 ${index + 1}`,
+                  progress: (index / 20) * 100,
+                  timestamp: Date.now()
+                });
+              },
+              (reason: string) => {
+                sendEvent({
+                  type: 'login_required',
+                  loginReason: reason,
+                  sessionId: currentSessionId,
+                  message: '请在浏览器中手动完成登录，然后继续测试',
+                  timestamp: Date.now()
+                });
+              }
+            );
 
         if (result.pausedForLogin) {
           sendEvent({

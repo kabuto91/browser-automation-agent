@@ -62,25 +62,33 @@ export class Executor {
 
     if (isNavigationOrClick) {
       try {
-        await this.page.waitForLoadState('load', { timeout: 5000 });
+        await this.page.waitForLoadState('load', { timeout: 10000 });
       } catch {
         // Ignore timeout
       }
 
       try {
-        await this.page.waitForLoadState('networkidle', { timeout: 3000 });
+        await this.page.waitForLoadState('networkidle', { timeout: 8000 });
+      } catch {
+        // Ignore timeout
+      }
+
+      await this.page.waitForTimeout(1000);
+
+      try {
+        await this.page.waitForLoadState('networkidle', { timeout: 5000 });
       } catch {
         // Ignore timeout
       }
     } else {
       try {
-        await this.page.waitForLoadState('domcontentloaded', { timeout: 2000 });
+        await this.page.waitForLoadState('domcontentloaded', { timeout: 3000 });
       } catch {
         // Ignore timeout
       }
 
       try {
-        await this.page.waitForLoadState('networkidle', { timeout: 1000 });
+        await this.page.waitForLoadState('networkidle', { timeout: 2000 });
       } catch {
         // Ignore timeout
       }

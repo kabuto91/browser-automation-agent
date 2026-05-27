@@ -52,7 +52,16 @@ export class BrowserActions {
   private async click(selector: string): Promise<void> {
     const locator = this.page.locator(selector);
     await locator.waitFor({ state: 'visible', timeout: config.browser.timeout });
+    
     await locator.click();
+    
+    await this.page.waitForTimeout(500);
+    
+    try {
+      await this.page.waitForLoadState('domcontentloaded', { timeout: 3000 });
+    } catch {
+      // Ignore timeout
+    }
   }
 
   private async type(selector: string, text: string): Promise<void> {

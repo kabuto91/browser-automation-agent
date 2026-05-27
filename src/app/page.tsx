@@ -391,7 +391,10 @@ export default function Home() {
   const handleLoadFlow = async (flow: SavedTestFlow) => {
     const goalToUse = flow.goal || flow.description;
     setTestGoal(goalToUse);
-    setExecutionLogs(prev => [...prev, `✅ 已加载测试流程: ${flow.name}`]);
+    setProgressData(prev => ({
+      ...prev,
+      liveLogs: [...prev.liveLogs, `✅ 已加载测试流程: ${flow.name}`],
+    }));
     
     if (flow.steps && flow.steps.length > 0) {
       const confirmExecute = window.confirm(
@@ -417,7 +420,10 @@ export default function Home() {
             steps: testSteps,
           });
           setPhase('review');
-          setExecutionLogs(prev => [...prev, `📋 已加载 ${testSteps.length} 个步骤，请审核后执行`]);
+          setProgressData(prev => ({
+            ...prev,
+            liveLogs: [...prev.liveLogs, `📋 已加载 ${testSteps.length} 个步骤，请审核后执行`],
+          }));
         }
       }
     }

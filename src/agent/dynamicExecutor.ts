@@ -304,20 +304,27 @@ export class DynamicExecutor {
 
   private async waitForAdditionalPageLoad(): Promise<void> {
     try {
-      await this.page.waitForLoadState('load', { timeout: 5000 });
+      await this.page.waitForLoadState('load', { timeout: 10000 });
       console.log(`[DynamicExecutor] Page load completed`);
     } catch {
       console.log(`[DynamicExecutor] Page load timeout, continuing...`);
     }
 
     try {
-      await this.page.waitForLoadState('networkidle', { timeout: 5000 });
+      await this.page.waitForLoadState('networkidle', { timeout: 10000 });
       console.log(`[DynamicExecutor] Network idle achieved`);
     } catch {
       console.log(`[DynamicExecutor] Network idle timeout, continuing...`);
     }
 
-    await this.page.waitForTimeout(500);
+    await this.page.waitForTimeout(1000);
+
+    try {
+      await this.page.waitForLoadState('networkidle', { timeout: 5000 });
+      console.log(`[DynamicExecutor] Additional network idle check passed`);
+    } catch {
+      console.log(`[DynamicExecutor] Additional network idle timeout, continuing...`);
+    }
   }
 
   private async performAction(action: TestStep['action']): Promise<void> {
@@ -326,13 +333,13 @@ export class DynamicExecutor {
 
   private async waitForPageStability(): Promise<void> {
     try {
-      await this.page.waitForLoadState('domcontentloaded', { timeout: 5000 });
+      await this.page.waitForLoadState('domcontentloaded', { timeout: 8000 });
     } catch {
       // Ignore timeout
     }
 
     try {
-      await this.page.waitForLoadState('networkidle', { timeout: 3000 });
+      await this.page.waitForLoadState('networkidle', { timeout: 5000 });
     } catch {
       // Ignore timeout
     }
