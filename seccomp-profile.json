@@ -1,0 +1,148 @@
+{
+  "defaultAction": "SCMP_ACT_ALLOW",
+  "defaultErrnoRet": 0,
+  "archMap": [
+    {
+      "architecture": "SCMP_ARCH_X86_64",
+      "subArchitectures": ["SCMP_ARCH_X86", "SCMP_ARCH_X32"]
+    },
+    {
+      "architecture": "SCMP_ARCH_X86",
+      "subArchitectures": []
+    },
+    {
+      "architecture": "SCMP_ARCH_X32",
+      "subArchitectures": []
+    }
+  ],
+  "syscalls": [
+    {
+      "names": [
+        "execve",
+        "execveat",
+        "fork",
+        "vfork",
+        "clone"
+      ],
+      "action": "SCMP_ACT_ERRNO",
+      "args": [],
+      "comment": "Block process execution syscalls to prevent spawning new processes",
+      "includes": {},
+      "excludes": {}
+    },
+    {
+      "names": [
+        "chmod",
+        "fchmod",
+        "fchmodat",
+        "chown",
+        "fchown",
+        "fchownat",
+        "lchown"
+      ],
+      "action": "SCMP_ACT_ERRNO",
+      "args": [],
+      "comment": "Block file permission modification",
+      "includes": {},
+      "excludes": {}
+    },
+    {
+      "names": [
+        "mount",
+        "umount",
+        "umount2",
+        "pivot_root"
+      ],
+      "action": "SCMP_ACT_ERRNO",
+      "args": [],
+      "comment": "Block mount operations",
+      "includes": {},
+      "excludes": {}
+    },
+    {
+      "names": [
+        "kexec_load",
+        "kexec_file_load"
+      ],
+      "action": "SCMP_ACT_ERRNO",
+      "args": [],
+      "comment": "Block kernel execution",
+      "includes": {},
+      "excludes": {}
+    },
+    {
+      "names": [
+        "init_module",
+        "finit_module",
+        "delete_module"
+      ],
+      "action": "SCMP_ACT_ERRNO",
+      "args": [],
+      "comment": "Block kernel module operations",
+      "includes": {},
+      "excludes": {}
+    },
+    {
+      "names": [
+        "ptrace",
+        "process_vm_readv",
+        "process_vm_writev"
+      ],
+      "action": "SCMP_ACT_ERRNO",
+      "args": [],
+      "comment": "Block process inspection and manipulation",
+      "includes": {},
+      "excludes": {}
+    },
+    {
+      "names": [
+        "reboot",
+        "swapon",
+        "swapoff"
+      ],
+      "action": "SCMP_ACT_ERRNO",
+      "args": [],
+      "comment": "Block system control operations",
+      "includes": {},
+      "excludes": {}
+    },
+    {
+      "names": [
+        "mknod",
+        "mknodat"
+      ],
+      "action": "SCMP_ACT_ERRNO",
+      "args": [],
+      "comment": "Block special file creation",
+      "includes": {},
+      "excludes": {}
+    },
+    {
+      "names": [
+        "acct"
+      ],
+      "action": "SCMP_ACT_ERRNO",
+      "args": [],
+      "comment": "Block accounting",
+      "includes": {},
+      "excludes": {}
+    },
+    {
+      "names": [
+        "setuid",
+        "setgid",
+        "setreuid",
+        "setregid",
+        "setresuid",
+        "setresgid",
+        "setfsuid",
+        "setfsgid"
+      ],
+      "action": "SCMP_ACT_ERRNO",
+      "args": [],
+      "comment": "Block UID/GID manipulation - enforced by no-new-privileges",
+      "includes": {},
+      "excludes": {}
+    }
+  ]
+}

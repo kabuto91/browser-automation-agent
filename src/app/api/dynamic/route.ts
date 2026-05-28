@@ -3,18 +3,37 @@ import { globalBrowserManager } from '@/browser/globalBrowserManager';
 import { DynamicExecutor } from '@/agent/dynamicExecutor';
 import { getLLMClient } from '@/llm/llmClient';
 import { BrowserAction } from '@/types';
+import { validateDynamicRequest, sanitizeSelector } from '@/utils/validation';
 
 export const maxDuration = 300;
 
 export async function POST(request: NextRequest) {
   try {
-    const { goal, headless = true, predefinedSteps, cdpEndpoint, sessionId } = await request.json();
+    const requestBody = await request.json();
 
-    if (!goal || typeof goal !== 'string') {
+    const validationResult = validateDynamicRequest(requestBody);
+    
+    if (!validationResult.success) {
       return NextResponse.json(
-        { error: 'Test goal is required' },
+        { 
+          error: 'Invalid request parameters',
+          details: validationResult.error.errors.map(e => ({
+            path: e.path.join('.'),
+            message: e.message,
+          }))
+        },
         { status: 400 }
       );
+    }
+
+    const { goal, headless = true, predefinedSteps, cdpEndpoint, sessionId } = validationResult.data;
+
+    if (predefinedSteps) {
+      for (const step of predefinedSteps) {
+        if ('selector' in step && step.selector) {
+          sanitizeSelector(step.selector);
+        }
+      }
     }
 
     const llm = getLLMClient();

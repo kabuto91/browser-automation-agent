@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  browser-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: browser-automation-agent
+    hostname: browser-agent
+    
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:seccomp-profile.json
+    
+    cap_drop:
+      - ALL
+    
+    read_only: true
+    
+    tmpfs:
+      - /tmp:size=100M,mode=1777
+      - /var/tmp:size=50M,mode=1777
+      - /run:size=10M,mode=1777
+    
+    networks:
+      - isolated-network
+    
+    ports:
+      - "3000:3000"
+    
+    environment:
+      - NODE_ENV=production
+      - HEADLESS=true
+      - URL_WHITELIST_ENABLED=${URL_WHITELIST_ENABLED:-false}
+      - URL_WHITELIST=${URL_WHITELIST:-}
+      - BLOCK_DANGEROUS_PROTOCOLS=true
+      - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - LLM_PROVIDER=${LLM_PROVIDER:-qwen}
+      - LLM_MODEL=${LLM_MODEL:-qwen-plus}
+      - LLM_BASE_URL=${LLM_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}
+    
+    volumes:
+      - screenshots-data:/app/screenshots
+      - reports-data:/app/reports
+    
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    
+    restart: unless-stopped
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  isolated-network:
+    driver: bridge
+    internal: false
+
+volumes:
+  screenshots-data:
+  reports-data:

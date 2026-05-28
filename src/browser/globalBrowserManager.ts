@@ -111,13 +111,25 @@ class GlobalBrowserManager {
 
     console.log('[GlobalBrowserManager] Launching new browser');
     
+    const launchArgs = [
+      '--disable-blink-features=AutomationControlled',
+    ];
+
+    if (config.security.networkIsolation) {
+      launchArgs.push('--disable-network');
+    }
+
+    if (config.security.proxyServer) {
+      launchArgs.push(`--proxy-server=${config.security.proxyServer}`);
+      
+      if (config.security.proxyBypassList && config.security.proxyBypassList.length > 0) {
+        launchArgs.push(`--proxy-bypass-list=${config.security.proxyBypassList.join(',')}`);
+      }
+    }
+
     const browser = await chromium.launch({
       headless,
-      args: [
-        '--disable-blink-features=AutomationControlled',
-        '--disable-web-security',
-        '--disable-features=IsolateOrigins,site-per-process',
-      ],
+      args: launchArgs,
     });
 
     const context = await browser.newContext({

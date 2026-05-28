@@ -6,6 +6,7 @@ import { Replanner } from '@/agent/replanner';
 import { getLLMClient } from '@/llm/llmClient';
 import { Reporter } from '@/report/reporter';
 import { TestStep, TestPlan } from '@/types';
+import { validateExecuteRequest, sanitizeSelector } from '@/utils/validation';
 
 export const maxDuration = 300;
 
@@ -101,13 +102,29 @@ startCleanupTimer();
 
 export async function POST(request: NextRequest) {
   try {
-    const { plan: planData, headless = true, cdpEndpoint } = await request.json();
+    const requestBody = await request.json();
 
-    if (!planData || !planData.steps) {
+    const validationResult = validateExecuteRequest(requestBody);
+    
+    if (!validationResult.success) {
       return NextResponse.json(
-        { error: 'Test plan is required' },
+        { 
+          error: 'Invalid request parameters',
+          details: validationResult.error.errors.map(e => ({
+            path: e.path.join('.'),
+            message: e.message,
+          }))
+        },
         { status: 400 }
       );
+    }
+
+    const { plan: planData, headless = true, cdpEndpoint } = validationResult.data;
+
+    for (const step of planData.steps) {
+      if ('selector' in step.action && step.action.selector) {
+        sanitizeSelector(step.action.selector);
+      }
     }
 
     const executionId = `exec-${Date.now()}`;

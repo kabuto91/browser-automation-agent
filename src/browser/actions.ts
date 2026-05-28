@@ -43,6 +43,33 @@ export class BrowserActions {
   }
 
   private async navigate(url: string): Promise<void> {
+    const dangerousProtocols = ['javascript:', 'data:', 'vbscript:', 'file:'];
+    
+    if (config.security.blockDangerousProtocols) {
+      for (const protocol of dangerousProtocols) {
+        if (url.toLowerCase().startsWith(protocol)) {
+          throw new Error(`Dangerous protocol blocked: ${protocol}`);
+        }
+      }
+    }
+
+    if (config.security.urlWhitelistEnabled && config.security.urlWhitelist.length > 0) {
+      try {
+        const urlObj = new URL(url);
+        const isAllowed = config.security.urlWhitelist.some(
+          domain => urlObj.hostname === domain || urlObj.hostname.endsWith(`.${domain}`)
+        );
+        
+        if (!isAllowed) {
+          throw new Error(
+            `URL domain "${urlObj.hostname}" is not in whitelist. Allowed domains: ${config.security.urlWhitelist.join(', ')}`
+          );
+        }
+      } catch (urlError: any) {
+        throw new Error(`Invalid URL: ${url}`);
+      }
+    }
+
     await this.page.goto(url, {
       waitUntil: 'domcontentloaded',
       timeout: config.browser.timeout,
@@ -131,6 +158,23 @@ export class BrowserActions {
   }
 
   private async evaluate(script: string): Promise<void> {
+    const allowedPatterns = [
+      /^window\.scrollBy\(/,
+      /^document\.querySelector\(/,
+      /^document\.getElementById\(/,
+      /^document\.querySelectorAll\(/,
+      /^element\.getBoundingClientRect\(/,
+      /^element\.scrollIntoView\(/,
+    ];
+
+    const isAllowed = allowedPatterns.some(pattern => pattern.test(script.trim()));
+    
+    if (!isAllowed) {
+      throw new Error(
+        `Script execution is restricted for security. Only safe DOM operations are allowed.`
+      );
+    }
+
     await this.page.evaluate(script);
   }
 

@@ -45,11 +45,21 @@ export interface ReportConfig {
   format: 'html' | 'json' | 'markdown';
 }
 
+export interface SecurityConfig {
+  urlWhitelist: string[];
+  urlWhitelistEnabled: boolean;
+  blockDangerousProtocols: boolean;
+  networkIsolation: boolean;
+  proxyServer?: string;
+  proxyBypassList?: string[];
+}
+
 export interface AppConfig {
   browser: BrowserConfig;
   llm: LLMConfig;
   screenshot: ScreenshotConfig;
   report: ReportConfig;
+  security: SecurityConfig;
 }
 
 function getEnvVar(name: string): string | undefined {
@@ -80,6 +90,14 @@ export const config: AppConfig = {
   report: {
     outputDir: getEnvVar('REPORT_DIR') || './reports',
     format: (getEnvVar('REPORT_FORMAT') as 'html' | 'json' | 'markdown') || 'html',
+  },
+  security: {
+    urlWhitelist: getEnvVar('URL_WHITELIST')?.split(',').map(s => s.trim()) || [],
+    urlWhitelistEnabled: getEnvVar('URL_WHITELIST_ENABLED') === 'true',
+    blockDangerousProtocols: getEnvVar('BLOCK_DANGEROUS_PROTOCOLS') !== 'false',
+    networkIsolation: getEnvVar('NETWORK_ISOLATION') === 'true',
+    proxyServer: getEnvVar('PROXY_SERVER'),
+    proxyBypassList: getEnvVar('PROXY_BYPASS_LIST')?.split(',').map(s => s.trim()),
   },
 };
 

@@ -10,13 +10,25 @@ export class BrowserManager {
   async launch(headless?: boolean): Promise<Page> {
     const isHeadless = headless ?? config.browser.headless;
     
+    const launchArgs = [
+      '--disable-blink-features=AutomationControlled',
+    ];
+
+    if (config.security.networkIsolation) {
+      launchArgs.push('--disable-network');
+    }
+
+    if (config.security.proxyServer) {
+      launchArgs.push(`--proxy-server=${config.security.proxyServer}`);
+      
+      if (config.security.proxyBypassList && config.security.proxyBypassList.length > 0) {
+        launchArgs.push(`--proxy-bypass-list=${config.security.proxyBypassList.join(',')}`);
+      }
+    }
+
     this.browser = await chromium.launch({
       headless: isHeadless,
-      args: [
-        '--disable-blink-features=AutomationControlled',
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-      ],
+      args: launchArgs,
     });
 
     this.context = await this.browser.newContext({
