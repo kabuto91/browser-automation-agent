@@ -113,6 +113,10 @@ export class DynamicExecutor {
     
     let stepIndex = 0;
     let completed = false;
+    let consecutiveFailures = 0;
+    const maxConsecutiveFailures = 3;
+
+    this.dynamicPlanner.reset();
 
     while (!completed && stepIndex < 20) {
       if (this.paused) {
@@ -218,6 +222,14 @@ export class DynamicExecutor {
       }
 
       if (result.status === 'error') {
+        consecutiveFailures++;
+        console.log(`[DynamicExecutor] Step failed, consecutive failures: ${consecutiveFailures}/${maxConsecutiveFailures}`);
+        
+        if (consecutiveFailures >= maxConsecutiveFailures) {
+          console.log('[DynamicExecutor] Max consecutive failures reached, stopping execution');
+          break;
+        }
+        
         const shouldContinue = await this.dynamicPlanner.shouldContinue(
           goal,
           newPageState,
@@ -227,6 +239,8 @@ export class DynamicExecutor {
         if (!shouldContinue) {
           break;
         }
+      } else {
+        consecutiveFailures = 0;
       }
 
       stepIndex++;
@@ -373,6 +387,10 @@ export class DynamicExecutor {
     let stepIndex = 0;
     let completed = false;
     let usePredefinedSteps = true;
+    let consecutiveFailures = 0;
+    const maxConsecutiveFailures = 3;
+
+    this.dynamicPlanner.reset();
 
     while (!completed && stepIndex < 20) {
       if (this.paused) {
@@ -492,6 +510,14 @@ export class DynamicExecutor {
       }
 
       if (result.status === 'error' && usePredefinedSteps) {
+        consecutiveFailures++;
+        console.log(`[DynamicExecutor] Predefined step failed, consecutive failures: ${consecutiveFailures}/${maxConsecutiveFailures}`);
+        
+        if (consecutiveFailures >= maxConsecutiveFailures) {
+          console.log('[DynamicExecutor] Max consecutive failures reached, stopping execution');
+          break;
+        }
+        
         console.log(`[DynamicExecutor] Predefined step failed, switching to dynamic planning...`);
         usePredefinedSteps = false;
         
@@ -505,6 +531,14 @@ export class DynamicExecutor {
           break;
         }
       } else if (result.status === 'error') {
+        consecutiveFailures++;
+        console.log(`[DynamicExecutor] Step failed, consecutive failures: ${consecutiveFailures}/${maxConsecutiveFailures}`);
+        
+        if (consecutiveFailures >= maxConsecutiveFailures) {
+          console.log('[DynamicExecutor] Max consecutive failures reached, stopping execution');
+          break;
+        }
+        
         const shouldContinue = await this.dynamicPlanner.shouldContinue(
           goal,
           newPageState,
@@ -514,6 +548,8 @@ export class DynamicExecutor {
         if (!shouldContinue) {
           break;
         }
+      } else {
+        consecutiveFailures = 0;
       }
 
       stepIndex++;

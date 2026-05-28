@@ -17,11 +17,19 @@ const DB_NAME = 'BrowserAutomationDB';
 const DB_VERSION = 2;
 const STORE_NAME = 'testFlows';
 
+const isBrowser = typeof window !== 'undefined' && typeof indexedDB !== 'undefined';
+
 class IndexedDBStorage {
   private db: IDBDatabase | null = null;
   private initPromise: Promise<void> | null = null;
+  private isAvailable: boolean = isBrowser;
 
   async init(): Promise<void> {
+    if (!this.isAvailable) {
+      console.log('[IndexedDB] IndexedDB not available in server environment - storage will be disabled (this is expected)');
+      return;
+    }
+
     if (this.initPromise) {
       return this.initPromise;
     }
@@ -66,6 +74,9 @@ class IndexedDBStorage {
   }
 
   private ensureDB(): IDBDatabase {
+    if (!this.isAvailable) {
+      throw new Error('IndexedDB is not available (server environment)');
+    }
     if (!this.db) {
       throw new Error('Database not initialized. Call init() first.');
     }
@@ -73,6 +84,10 @@ class IndexedDBStorage {
   }
 
   async saveFlow(flow: SavedTestFlow): Promise<SavedTestFlow> {
+    if (!this.isAvailable) {
+      console.log('[IndexedDB] Skipping save: IndexedDB only available in browser environment (this is expected on server)');
+      return flow;
+    }
     const db = this.ensureDB();
     
     return new Promise((resolve, reject) => {
@@ -91,6 +106,9 @@ class IndexedDBStorage {
   }
 
   async getFlow(id: string): Promise<SavedTestFlow | undefined> {
+    if (!this.isAvailable) {
+      return undefined;
+    }
     const db = this.ensureDB();
     
     return new Promise((resolve, reject) => {
@@ -109,6 +127,9 @@ class IndexedDBStorage {
   }
 
   async getAllFlows(): Promise<SavedTestFlow[]> {
+    if (!this.isAvailable) {
+      return [];
+    }
     const db = this.ensureDB();
     
     return new Promise((resolve, reject) => {
@@ -127,6 +148,9 @@ class IndexedDBStorage {
   }
 
   async updateFlowUsage(id: string): Promise<void> {
+    if (!this.isAvailable) {
+      return;
+    }
     const flow = await this.getFlow(id);
     if (flow) {
       flow.lastUsed = new Date().toISOString();
@@ -136,6 +160,9 @@ class IndexedDBStorage {
   }
 
   async deleteFlow(id: string): Promise<boolean> {
+    if (!this.isAvailable) {
+      return false;
+    }
     const db = this.ensureDB();
     
     return new Promise((resolve, reject) => {
@@ -154,6 +181,9 @@ class IndexedDBStorage {
   }
 
   async searchFlows(query: string, tags?: string[]): Promise<SavedTestFlow[]> {
+    if (!this.isAvailable) {
+      return [];
+    }
     const db = this.ensureDB();
     
     return new Promise((resolve, reject) => {
@@ -212,6 +242,9 @@ class IndexedDBStorage {
   }
 
   async getPopularFlows(limit: number = 10): Promise<SavedTestFlow[]> {
+    if (!this.isAvailable) {
+      return [];
+    }
     const db = this.ensureDB();
     
     return new Promise((resolve, reject) => {
@@ -240,6 +273,9 @@ class IndexedDBStorage {
   }
 
   async getRecentFlows(limit: number = 10): Promise<SavedTestFlow[]> {
+    if (!this.isAvailable) {
+      return [];
+    }
     const db = this.ensureDB();
     
     return new Promise((resolve, reject) => {
@@ -273,6 +309,9 @@ class IndexedDBStorage {
   }
 
   async importFlows(jsonData: string): Promise<number> {
+    if (!this.isAvailable) {
+      return 0;
+    }
     try {
       const data = JSON.parse(jsonData);
       const flows = data.flows || data.steps || [];
@@ -288,6 +327,9 @@ class IndexedDBStorage {
   }
 
   async saveFlowsBatch(flows: SavedTestFlow[]): Promise<number> {
+    if (!this.isAvailable) {
+      return 0;
+    }
     const db = this.ensureDB();
     
     return new Promise((resolve, reject) => {
@@ -327,6 +369,9 @@ class IndexedDBStorage {
   }
 
   async deleteFlowsBatch(ids: string[]): Promise<number> {
+    if (!this.isAvailable) {
+      return 0;
+    }
     const db = this.ensureDB();
     
     return new Promise((resolve, reject) => {
@@ -366,6 +411,9 @@ class IndexedDBStorage {
   }
 
   async clearAll(): Promise<void> {
+    if (!this.isAvailable) {
+      return;
+    }
     const db = this.ensureDB();
     
     return new Promise((resolve, reject) => {

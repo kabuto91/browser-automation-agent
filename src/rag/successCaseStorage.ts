@@ -1,4 +1,6 @@
 import { TestStep, StepResult, BrowserAction } from '../types';
+import * as fs from 'fs';
+import * as path from 'path';
 
 export interface FailureContext {
   goal: string;
@@ -16,7 +18,7 @@ export interface SuccessSolution {
 }
 
 export interface CaseMetadata {
-  createdAt: Date;
+  createdAt: string;
   useCount: number;
   successRate: number;
   tags: string[];
@@ -30,14 +32,13 @@ export interface SuccessCase {
   metadata: CaseMetadata;
 }
 
-const DB_NAME = 'TestAgentRAG';
-const CASE_STORE = 'success_cases';
-const DB_VERSION = 1;
+const DATA_DIR = path.join(process.cwd(), 'data');
+const CASES_FILE = path.join(DATA_DIR, 'rag-cases.json');
 
 export class SuccessCaseStorage {
   private static instance: SuccessCaseStorage | null = null;
-  private db: IDBDatabase | null = null;
   private initialized = false;
+  private cases: SuccessCase[] = [];
 
   static getInstance(): SuccessCaseStorage {
     if (!SuccessCaseStorage.instance) {
@@ -51,36 +52,28 @@ export class SuccessCaseStorage {
       return;
     }
 
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
+    try {
+      if (!fs.existsSync(DATA_DIR)) {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
+        console.log('[SuccessCaseStorage] Created data directory:', DATA_DIR);
+      }
 
-      request.onerror = () => {
-        console.error('[SuccessCaseStorage] Failed to open database');
-        reject(new Error('Failed to open database'));
-      };
+      if (fs.existsSync(CASES_FILE)) {
+        const data = fs.readFileSync(CASES_FILE, 'utf-8');
+        this.cases = JSON.parse(data);
+        console.log('[SuccessCaseStorage] Loaded', this.cases.length, 'cases from file');
+      } else {
+        this.cases = [];
+        this.saveToFile();
+        console.log('[SuccessCaseStorage] Created new cases file');
+      }
 
-      request.onsuccess = (event: any) => {
-        this.db = event.target.result;
-        this.initialized = true;
-        console.log('[SuccessCaseStorage] Database initialized successfully');
-        resolve();
-      };
-
-      request.onupgradeneeded = (event: any) => {
-        const db = event.target.result;
-
-        if (!db.objectStoreNames.contains(CASE_STORE)) {
-          const store = db.createObjectStore(CASE_STORE, { keyPath: 'id' });
-          
-          store.createIndex('errorType', 'failureContext.errorType', { unique: false });
-          store.createIndex('createdAt', 'metadata.createdAt', { unique: false });
-          store.createIndex('successRate', 'metadata.successRate', { unique: false });
-          store.createIndex('useCount', 'metadata.useCount', { unique: false });
-          
-          console.log('[SuccessCaseStorage] Object store created with indexes');
-        }
-      };
-    });
+      this.initialized = true;
+    } catch (error: any) {
+      console.error('[SuccessCaseStorage] Failed to initialize:', error.message);
+      this.cases = [];
+      this.initialized = true;
+    }
   }
 
   private async ensureInitialized(): Promise<void> {
@@ -89,32 +82,26 @@ export class SuccessCaseStorage {
     }
   }
 
-  private ensureDB(): IDBDatabase {
-    if (!this.db) {
-      throw new Error('Database not initialized');
+  private saveToFile(): void {
+    try {
+      fs.writeFileSync(CASES_FILE, JSON.stringify(this.cases, null, 2), 'utf-8');
+    } catch (error: any) {
+      console.error('[SuccessCaseStorage] Failed to save to file:', error.message);
     }
-    return this.db;
   }
 
   async saveSuccessCase(successCase: SuccessCase): Promise<void> {
     await this.ensureInitialized();
-    const db = this.ensureDB();
 
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction([CASE_STORE], 'readwrite');
-      const store = transaction.objectStore(CASE_STORE);
-      const request = store.put(successCase);
+    const existingIndex = this.cases.findIndex(c => c.id === successCase.id);
+    if (existingIndex >= 0) {
+      this.cases[existingIndex] = successCase;
+    } else {
+      this.cases.push(successCase);
+    }
 
-      request.onsuccess = () => {
-        console.log('[SuccessCaseStorage] Case saved successfully:', successCase.id);
-        resolve();
-      };
-
-      request.onerror = () => {
-        console.error('[SuccessCaseStorage] Failed to save case:', successCase.id);
-        reject(new Error('Failed to save case'));
-      };
-    });
+    this.saveToFile();
+    console.log('[SuccessCaseStorage] Case saved successfully:', successCase.id);
   }
 
   async getSimilarCases(
@@ -122,185 +109,94 @@ export class SuccessCaseStorage {
     limit: number = 10
   ): Promise<SuccessCase[]> {
     await this.ensureInitialized();
-    const db = this.ensureDB();
 
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction([CASE_STORE], 'readonly');
-      const store = transaction.objectStore(CASE_STORE);
-      const index = store.index('errorType');
-      const range = IDBKeyRange.only(failureContext.errorType);
-      const request = index.getAll(range);
+    const matchingCases = this.cases.filter(
+      c => c.failureContext.errorType === failureContext.errorType
+    );
 
-      request.onsuccess = () => {
-        const cases = request.result || [];
-        console.log(`[SuccessCaseStorage] Found ${cases.length} cases for error type: ${failureContext.errorType}`);
-        resolve(cases.slice(0, limit));
-      };
-
-      request.onerror = () => {
-        console.error('[SuccessCaseStorage] Failed to retrieve cases');
-        reject(new Error('Failed to retrieve cases'));
-      };
-    });
+    console.log(`[SuccessCaseStorage] Found ${matchingCases.length} cases for error type: ${failureContext.errorType}`);
+    return matchingCases.slice(0, limit);
   }
 
   async searchByKeywords(keywords: string[]): Promise<SuccessCase[]> {
     await this.ensureInitialized();
-    const db = this.ensureDB();
 
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction([CASE_STORE], 'readonly');
-      const store = transaction.objectStore(CASE_STORE);
-      const request = store.getAll();
-
-      request.onsuccess = () => {
-        const allCases = request.result || [];
-        
-        const filteredCases = allCases.filter(successCase => {
-          const caseText = `${successCase.failureContext.failureReason} ${successCase.successSolution.recoveryStrategy}`;
-          const lowerCaseText = caseText.toLowerCase();
-          
-          return keywords.some(keyword => 
-            lowerCaseText.includes(keyword.toLowerCase())
-          );
-        });
-
-        console.log(`[SuccessCaseStorage] Keyword search found ${filteredCases.length} cases`);
-        resolve(filteredCases);
-      };
-
-      request.onerror = () => {
-        console.error('[SuccessCaseStorage] Keyword search failed');
-        reject(new Error('Keyword search failed'));
-      };
+    const filteredCases = this.cases.filter(successCase => {
+      const caseText = `${successCase.failureContext.failureReason} ${successCase.successSolution.recoveryStrategy}`;
+      const lowerCaseText = caseText.toLowerCase();
+      
+      return keywords.some(keyword => 
+        lowerCaseText.includes(keyword.toLowerCase())
+      );
     });
+
+    console.log(`[SuccessCaseStorage] Keyword search found ${filteredCases.length} cases`);
+    return filteredCases;
   }
 
   async updateUseCount(caseId: string): Promise<void> {
     await this.ensureInitialized();
-    const db = this.ensureDB();
 
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction([CASE_STORE], 'readwrite');
-      const store = transaction.objectStore(CASE_STORE);
-      const getRequest = store.get(caseId);
-
-      getRequest.onsuccess = () => {
-        const successCase = getRequest.result;
-        if (successCase) {
-          successCase.metadata.useCount += 1;
-          const putRequest = store.put(successCase);
-          
-          putRequest.onsuccess = () => {
-            console.log(`[SuccessCaseStorage] Updated use count for case: ${caseId}`);
-            resolve();
-          };
-          
-          putRequest.onerror = () => {
-            reject(new Error('Failed to update use count'));
-          };
-        } else {
-          resolve();
-        }
-      };
-
-      getRequest.onerror = () => {
-        reject(new Error('Failed to get case'));
-      };
-    });
+    const successCase = this.cases.find(c => c.id === caseId);
+    if (successCase) {
+      successCase.metadata.useCount += 1;
+      this.saveToFile();
+      console.log(`[SuccessCaseStorage] Updated use count for case: ${caseId}`);
+    }
   }
 
   async updateSuccessRate(caseId: string, success: boolean): Promise<void> {
     await this.ensureInitialized();
-    const db = this.ensureDB();
 
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction([CASE_STORE], 'readwrite');
-      const store = transaction.objectStore(CASE_STORE);
-      const getRequest = store.get(caseId);
-
-      getRequest.onsuccess = () => {
-        const successCase = getRequest.result;
-        if (successCase) {
-          const totalAttempts = successCase.metadata.useCount;
-          const currentSuccesses = successCase.metadata.successRate * totalAttempts;
-          const newSuccesses = success ? currentSuccesses + 1 : currentSuccesses;
-          successCase.metadata.successRate = newSuccesses / (totalAttempts + 1);
-          
-          const putRequest = store.put(successCase);
-          
-          putRequest.onsuccess = () => {
-            console.log(`[SuccessCaseStorage] Updated success rate for case: ${caseId}`);
-            resolve();
-          };
-          
-          putRequest.onerror = () => {
-            reject(new Error('Failed to update success rate'));
-          };
-        } else {
-          resolve();
-        }
-      };
-
-      getRequest.onerror = () => {
-        reject(new Error('Failed to get case'));
-      };
-    });
+    const successCase = this.cases.find(c => c.id === caseId);
+    if (successCase) {
+      const totalAttempts = successCase.metadata.useCount;
+      const currentSuccesses = successCase.metadata.successRate * totalAttempts;
+      const newSuccesses = success ? currentSuccesses + 1 : currentSuccesses;
+      successCase.metadata.successRate = newSuccesses / (totalAttempts + 1);
+      
+      this.saveToFile();
+      console.log(`[SuccessCaseStorage] Updated success rate for case: ${caseId}`);
+    }
   }
 
   async getAllCases(): Promise<SuccessCase[]> {
     await this.ensureInitialized();
-    const db = this.ensureDB();
-
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction([CASE_STORE], 'readonly');
-      const store = transaction.objectStore(CASE_STORE);
-      const request = store.getAll();
-
-      request.onsuccess = () => {
-        resolve(request.result || []);
-      };
-
-      request.onerror = () => {
-        reject(new Error('Failed to get all cases'));
-      };
-    });
+    return [...this.cases];
   }
 
   async deleteCase(caseId: string): Promise<void> {
     await this.ensureInitialized();
-    const db = this.ensureDB();
 
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction([CASE_STORE], 'readwrite');
-      const store = transaction.objectStore(CASE_STORE);
-      const request = store.delete(caseId);
-
-      request.onsuccess = () => {
-        console.log(`[SuccessCaseStorage] Case deleted: ${caseId}`);
-        resolve();
-      };
-
-      request.onerror = () => {
-        reject(new Error('Failed to delete case'));
-      };
-    });
+    const index = this.cases.findIndex(c => c.id === caseId);
+    if (index >= 0) {
+      this.cases.splice(index, 1);
+      this.saveToFile();
+      console.log(`[SuccessCaseStorage] Case deleted: ${caseId}`);
+    }
   }
 
   async getStats(): Promise<{ totalCases: number; avgSuccessRate: number; avgUseCount: number }> {
-    const cases = await this.getAllCases();
+    await this.ensureInitialized();
     
-    if (cases.length === 0) {
+    if (this.cases.length === 0) {
       return { totalCases: 0, avgSuccessRate: 0, avgUseCount: 0 };
     }
 
-    const avgSuccessRate = cases.reduce((sum, c) => sum + c.metadata.successRate, 0) / cases.length;
-    const avgUseCount = cases.reduce((sum, c) => sum + c.metadata.useCount, 0) / cases.length;
+    const avgSuccessRate = this.cases.reduce((sum, c) => sum + c.metadata.successRate, 0) / this.cases.length;
+    const avgUseCount = this.cases.reduce((sum, c) => sum + c.metadata.useCount, 0) / this.cases.length;
 
     return {
-      totalCases: cases.length,
+      totalCases: this.cases.length,
       avgSuccessRate,
       avgUseCount
     };
+  }
+
+  async clearAll(): Promise<void> {
+    await this.ensureInitialized();
+    this.cases = [];
+    this.saveToFile();
+    console.log('[SuccessCaseStorage] All cases cleared');
   }
 }

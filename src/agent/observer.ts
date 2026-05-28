@@ -170,16 +170,17 @@ Title: ${snapshot.title}
 
     if (snapshot.buttons.length > 0) {
       summary += `Buttons (${snapshot.buttons.length}):\n`;
-      snapshot.buttons.slice(0, 10).forEach((btn, i) => {
-        summary += `  ${i + 1}. "${btn.text}" -> ${btn.selector}\n`;
+      snapshot.buttons.slice(0, 15).forEach((btn, i) => {
+        summary += `  ${i + 1}. "${btn.text.slice(0, 40)}" -> selector: ${btn.selector}\n`;
       });
       summary += '\n';
     }
 
     if (snapshot.links.length > 0) {
       summary += `Links (${snapshot.links.length}):\n`;
-      snapshot.links.slice(0, 10).forEach((link, i) => {
-        summary += `  ${i + 1}. "${link.text}" -> ${link.href}\n`;
+      snapshot.links.slice(0, 15).forEach((link, i) => {
+        const shortHref = link.href.length > 60 ? link.href.slice(0, 60) + '...' : link.href;
+        summary += `  ${i + 1}. "${link.text.slice(0, 40)}" -> selector: ${link.selector}, href: ${shortHref}\n`;
       });
       summary += '\n';
     }
@@ -282,6 +283,11 @@ Title: ${snapshot.title}
           '[onclick]',
           '[data-testid]',
           '[tabindex]',
+          'h1, h2, h3',
+          '.result',
+          '.search-result',
+          '[class*="result"]',
+          '[class*="item"]',
         ];
         
         const allElements: Element[] = [];
@@ -292,34 +298,77 @@ Title: ${snapshot.title}
         const uniqueElements = [...new Set(allElements)];
         
         const generateSelector = (el: Element): string => {
-          if (el.id) return `#${el.id}`;
+          if (el.id) {
+            const safeId = el.id.replace(/[:\[\]"']/g, '\\$&');
+            return `#${safeId}`;
+          }
           
           const dataTestId = el.getAttribute('data-testid');
-          if (dataTestId) return `[data-testid="${dataTestId}"]`;
+          if (dataTestId) {
+            const safeTestId = dataTestId.replace(/[:\[\]"']/g, '\\$&');
+            return `[data-testid="${safeTestId}"]`;
+          }
           
           const ariaLabel = el.getAttribute('aria-label');
           if (ariaLabel) {
-            return `${el.tagName.toLowerCase()}[aria-label="${ariaLabel}"]`;
+            const safeAriaLabel = ariaLabel.replace(/[:\[\]"']/g, '\\$&');
+            return `${el.tagName.toLowerCase()}[aria-label="${safeAriaLabel}"]`;
           }
           
           const name = (el as HTMLInputElement).name;
           if (name) {
-            return `${el.tagName.toLowerCase()}[name="${name}"]`;
+            const safeName = name.replace(/[:\[\]"']/g, '\\$&');
+            return `${el.tagName.toLowerCase()}[name="${safeName}"]`;
           }
           
           const placeholder = (el as HTMLInputElement).placeholder;
           if (placeholder) {
-            return `${el.tagName.toLowerCase()}[placeholder="${placeholder}"]`;
+            const safePlaceholder = placeholder.replace(/[:\[\]"']/g, '\\$&');
+            return `${el.tagName.toLowerCase()}[placeholder="${safePlaceholder}"]`;
+          }
+          
+          const href = (el as HTMLAnchorElement).href;
+          if (href && el.tagName.toLowerCase() === 'a') {
+            try {
+              const urlObj = new URL(href);
+              const path = urlObj.pathname;
+              if (path && path.length > 1) {
+                return `a[href*="${path.slice(0, 50)}"]`;
+              }
+            } catch {
+              // Ignore invalid URLs
+            }
+          }
+          
+          const role = el.getAttribute('role');
+          if (role) {
+            const text = (el.textContent || '').trim().slice(0, 20);
+            if (text) {
+              const safeText = text.replace(/[:\[\]"']/g, '');
+              return `[role="${role}"]:has-text("${safeText}")`;
+            }
+            return `[role="${role}"]`;
           }
           
           const text = (el.textContent || '').trim().slice(0, 30);
           if (text && el.tagName.toLowerCase() !== 'input') {
-            return `${el.tagName.toLowerCase()}:has-text("${text}")`;
+            const safeText = text.replace(/[:\[\]"']/g, '');
+            if (safeText.length > 2) {
+              return `${el.tagName.toLowerCase()}:has-text("${safeText}")`;
+            }
           }
           
           const type = (el as HTMLInputElement).type;
           if (type) {
             return `${el.tagName.toLowerCase()}[type="${type}"]`;
+          }
+          
+          const className = (el as HTMLElement).className;
+          if (className && typeof className === 'string') {
+            const classes = className.split(' ').filter(c => c.length > 2 && !c.includes(':'));
+            if (classes.length > 0) {
+              return `${el.tagName.toLowerCase()}.${classes[0]}`;
+            }
           }
           
           return el.tagName.toLowerCase();

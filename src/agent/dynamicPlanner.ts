@@ -41,12 +41,28 @@ Selector guidelines:
 - Prefer data-testid, id, or aria-label selectors when available
 - For buttons/links, you can use text content: button:has-text("Submit")
 - For inputs, use name, placeholder, or id attributes
+- For search results, use the link selector from the page state (e.g., a[href*="..."] or the provided link selector)
+
+Special scenarios:
+1. Search operations:
+   - After typing in search input, press Enter key to submit: { "type": "press", "key": "Enter" }
+   - Wait for search results to load: { "type": "wait", "ms": 2000 }
+   - Click on search result links using the selector from page state
+
+2. Dynamic content:
+   - If elements are not immediately visible, use wait action first
+   - After navigation/click actions, the page may need time to stabilize
+
+3. Error recovery:
+   - If a selector fails, try alternative selectors from the page state
+   - Use scroll to bring elements into view if needed
 
 Important:
 - Only output valid JSON
 - Choose ONE action at a time
 - Consider the current page state carefully
-- If an element you need is not visible, you may need to scroll first`;
+- If an element you need is not visible, you may need to scroll or wait first
+- After clicking links or navigating, always consider that the page state will change`;
 
 export interface DynamicStep {
   reasoning: string;

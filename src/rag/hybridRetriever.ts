@@ -258,9 +258,11 @@ Please evaluate the similarity of each historical case to the current failure an
     return totalScore;
   }
 
-  private calculateRecencyScore(createdAt: Date): number {
+  private calculateRecencyScore(createdAt: string | Date): number {
     const now = Date.now();
-    const created = createdAt.getTime();
+    const created = typeof createdAt === 'string' 
+      ? new Date(createdAt).getTime() 
+      : createdAt.getTime();
     const daysSinceCreation = (now - created) / (1000 * 60 * 60 * 24);
 
     if (daysSinceCreation < 7) {

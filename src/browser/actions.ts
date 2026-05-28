@@ -78,16 +78,34 @@ export class BrowserActions {
 
   private async click(selector: string): Promise<void> {
     const locator = this.page.locator(selector);
-    await locator.waitFor({ state: 'visible', timeout: config.browser.timeout });
-    
-    await locator.click();
-    
-    await this.page.waitForTimeout(500);
     
     try {
-      await this.page.waitForLoadState('domcontentloaded', { timeout: 3000 });
+      await locator.waitFor({ state: 'visible', timeout: config.browser.timeout });
+    } catch (waitError) {
+      console.log(`[BrowserActions] Element not visible, trying to scroll into view: ${selector}`);
+      try {
+        await locator.scrollIntoViewIfNeeded();
+        await this.page.waitForTimeout(500);
+        await locator.waitFor({ state: 'visible', timeout: 5000 });
+      } catch (scrollError) {
+        throw new Error(`Element not found or not visible: ${selector}`);
+      }
+    }
+    
+    await locator.click({ timeout: 10000 });
+    
+    await this.page.waitForTimeout(1000);
+    
+    try {
+      await this.page.waitForLoadState('domcontentloaded', { timeout: 5000 });
     } catch {
       // Ignore timeout
+    }
+    
+    try {
+      await this.page.waitForLoadState('networkidle', { timeout: 5000 });
+    } catch {
+      // Ignore timeout - some pages never reach networkidle
     }
   }
 

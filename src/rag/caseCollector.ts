@@ -36,7 +36,7 @@ export class CaseCollector {
         totalRetryTime: this.calculateTotalTime(retryResults)
       },
       metadata: {
-        createdAt: new Date(),
+        createdAt: new Date().toISOString(),
         useCount: 0,
         successRate: 1.0,
         tags: await this.generateTags(originalFailure),
