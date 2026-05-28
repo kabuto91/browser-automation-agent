@@ -9,7 +9,7 @@
 [![Next.js](https://img.shields.io/badge/Next.js-14.2-black)](https://nextjs.org/)
 [![Playwright](https://img.shields.io/badge/Playwright-1.48-green)](https://playwright.dev/)
 
-[快速开始](#-快速开始) • [功能特性](#-功能特性) • [使用指南](#-使用指南) • [API文档](#-api-文档)
+[快速开始](#-快速开始) • [功能特性](#-功能特性) • [使用指南](#-使用指南) • [API文档](#-api文档)
 
 </div>
 
@@ -23,12 +23,14 @@ Browser Automation Testing Agent 是一个智能化的浏览器自动化测试�
 
 ### ✨ 核心亮点
 
-- 🤖 **自然语言驱动** - 用中文/英文描述测试目标即可
-- 🧠 **智能决策** - 基于 LLM 动态生成和调整测试步骤
-- 🔄 **自适应执行** - 实时获取页面状态，智能应对页面变化
-- 💾 **步骤复用** - 保存成功的测试流程，一键复用
-- 🎨 **可视化界面** - 现代化 Web UI，实时监控测试过程
-- 🔌 **多模型支持** - 支持千问、OpenAI、Claude 等多种 LLM
+- 🤖 **自然语言驱动** - 用中文/英文描述测试目标即可，无需编写代码
+- 🧠 **智能决策** - 基于 LLM 动态生成和调整测试步骤，适应页面变化
+- 🔄 **自适应执行** - 实时获取页面状态，智能应对各种异常情况
+- 💾 **步骤复用** - 保存成功的测试流程，一键复用，提高效率
+- 🎨 **可视化界面** - 现代化 Web UI，实时监控测试过程和结果
+- 🔌 **多模型支持** - 支持千问、OpenAI、Claude 等多种 LLM 提供商
+- 🛡️ **安全防护** - URL 白名单、危险协议拦截、网络隔离等安全机制
+- 🐳 **容器化部署** - 完整的 Docker 支持，支持沙箱隔离环境
 
 ## 🚀 快速开始
 
@@ -73,11 +75,15 @@ DASHSCOPE_MODEL=qwen-plus
 
 # 可选：OpenAI
 # OPENAI_API_KEY=your_openai_key
-# OPENAI_MODEL=gpt-4
+# OPENAI_MODEL=gpt-4o
 
 # 可选：Anthropic
 # ANTHROPIC_API_KEY=your_anthropic_key
 # ANTHROPIC_MODEL=claude-3-5-sonnet-20241022
+
+# 浏览器配置
+HEADLESS=false
+BROWSER_TIMEOUT=30000
 ```
 
 ## 🎯 功能特性
@@ -89,12 +95,11 @@ DASHSCOPE_MODEL=qwen-plus
 输出: 自动生成导航→输入→搜索的完整测试流程
 ```
 
-### 2. 动态执行模式
+**两种执行模式**：
+- **静态模式**：一次性生成完整测试计划，适合流程固定的测试
+- **动态模式**：实时根据页面状态生成下一步操作，适合页面变化较大的测试
 
-- **静态模式**：先生成完整计划，再按计划执行
-- **动态模式**：实时获取页面状态，智能生成下一步操作
-
-### 3. 丰富的浏览器操作
+### 2. 丰富的浏览器操作
 
 | 操作类型 | 说明 | 示例 |
 |---------|------|------|
@@ -106,8 +111,10 @@ DASHSCOPE_MODEL=qwen-plus
 | scroll | 滚动页面 | 滚动到底部 |
 | wait | 等待 | 等待元素加载 |
 | screenshot | 截图 | 记录页面状态 |
+| press | 按键 | 按下 Enter |
+| evaluate | 执行 JS | 自定义脚本 |
 
-### 4. 步骤库管理
+### 3. 步骤库管理
 
 - ✅ 保存单个测试步骤
 - ✅ 保存完整测试流程
@@ -115,12 +122,27 @@ DASHSCOPE_MODEL=qwen-plus
 - ✅ 快速搜索加载
 - ✅ 一键复用执行
 
-### 5. 智能错误处理
+### 4. 智能错误处理
 
 - 自动截图记录错误现场
 - 智能判断是否继续执行
 - 提供详细的错误诊断信息
-- 支持自动重试机制
+- 支持自动重试机制（最多 3 次）
+- 从历史成功案例中学习（RAG）
+
+### 5. 登录检测功能
+
+- 自动检测登录需求
+- 暂停等待手动登录
+- 登录完成后恢复执行
+- 支持已登录浏览器连接
+
+### 6. 安全防护机制
+
+- **URL 白名单**：限制可访问的域名
+- **危险协议拦截**：阻止 javascript:, data:, file: 等协议
+- **网络隔离**：可选的网络访问控制
+- **代理支持**：通过代理路由所有流量
 
 ## 📖 使用指南
 
@@ -163,26 +185,42 @@ DASHSCOPE_MODEL=qwen-plus
 
 ### 高级功能
 
-#### 保存单个步骤
-```typescript
-// 1. 测试完成后，找到成功的步骤
-// 2. 点击"💾 保存"按钮
-// 3. 输入步骤名称和标签
-// 4. 确认保存到步骤库
+#### 连接现有浏览器
+
+```bash
+# Windows: 启动 Chrome 调试模式
+scripts\start-chrome-debug.bat
+
+# 或手动启动
+chrome.exe --remote-debugging-port=9222 --user-data-dir="C:\chrome-debug-profile"
 ```
 
-#### 保存整个流程
+在 Web 界面中：
+1. 勾选"使用现有浏览器"
+2. 输入 CDP Endpoint：`http://localhost:9222`
+3. 开始测试
+
+**优势**：
+- 使用已登录的浏览器会话
+- 避免重复登录操作
+- 保持 cookies 和 session
+- 调试更方便
+
+#### 保存测试流程
+
 ```typescript
 // 1. 测试完成后，点击"保存整个测试流程"
-// 2. 输入流程名称
+// 2. 输入流程名称（如："百度搜索流程"）
 // 3. 添加标签（如：e2e, smoke-test）
 // 4. 所有成功步骤将被保存为一个完整流程
+// 5. 下次可直接加载使用
 ```
 
 ## 🏗️ 项目架构
 
+### Plan-and-Execute 模式
+
 ```
-Plan-and-Execute 模式
 ┌─────────────┐
 │   Planner   │ ──生成计划──> ┌─────────────┐
 └─────────────┘               │  Executor   │
@@ -197,23 +235,50 @@ Plan-and-Execute 模式
                               ┌─────────────┐             │
                               │  Replanner  │ <───────────┘
                               └─────────────┘
+                                    │
+                                    ▼
+                              ┌─────────────┐
+                              │     RAG     │ ──历史案例学习
+                              └─────────────┘
 ```
 
-### 核心模块
+### 核心组件
 
-- **Planner**: 智能规划器，生成测试步骤
-- **Executor**: 执行器，控制浏览器操作
-- **Observer**: 观察器，获取页面状态
-- **Replanner**: 重规划器，动态调整策略
+| 组件 | 文件 | 功能 |
+|------|------|------|
+| Planner | [src/agent/planner.ts](file:///d:/frontProjects/agent/my-first-agent/src/agent/planner.ts) | 根据目标生成测试步骤 |
+| Executor | [src/agent/executor.ts](file:///d:/frontProjects/agent/my-first-agent/src/agent/executor.ts) | 执行浏览器操作 |
+| Observer | [src/agent/observer.ts](file:///d:/frontProjects/agent/my-first-agent/src/agent/observer.ts) | 获取页面状态 |
+| Replanner | [src/agent/replanner.ts](file:///d:/frontProjects/agent/my-first-agent/src/agent/replanner.ts) | 错误恢复和重规划 |
+| LoginDetector | [src/agent/loginDetector.ts](file:///d:/frontProjects/agent/my-first-agent/src/agent/loginDetector.ts) | 登录需求检测 |
+| RAG System | [src/rag/](file:///d:/frontProjects/agent/my-first-agent/src/rag/) | 历史案例学习 |
 
-详细架构说明请查看 [agent.md](./agent.md)
+详细架构说明请查看 [agent.md](file:///d:/frontProjects/agent/my-first-agent/agent.md)。
 
-## 🔌 API 文档
+## 📊 API 文档
 
-### POST /api/dynamic
+### POST /api/plan
+生成测试计划
+
+```json
+{
+  "goal": "打开百度并搜索 Playwright"
+}
+```
+
+### POST /api/execute/stream
+流式执行测试计划
+
+```json
+{
+  "planId": "plan-xxx",
+  "headless": false
+}
+```
+
+### POST /api/dynamic/stream
 动态执行测试
 
-**请求体：**
 ```json
 {
   "goal": "打开百度并搜索 Playwright",
@@ -221,182 +286,127 @@ Plan-and-Execute 模式
 }
 ```
 
-**响应：**
-```json
-{
-  "success": true,
-  "totalSteps": 3,
-  "passedSteps": 3,
-  "failedSteps": 0,
-  "duration": 5234,
-  "stepResults": [...]
-}
-```
-
-### POST /api/plan
-生成测试计划
-
-### POST /api/execute
-执行测试计划
-
 ### GET /api/steps
 获取步骤库
 
 ### POST /api/steps
-保存测试步骤
+保存步骤
 
-完整 API 文档请查看 [agent.md](./agent.md#-api-接口)
+完整 API 文档请查看 [agent.md](file:///d:/frontProjects/agent/my-first-agent/agent.md#📊-api-接口文档)。
 
-## 🛠️ 开发指南
+## 🐳 Docker 部署
 
-### 项目结构
-
-```
-src/
-├── agent/          # Agent 核心逻辑
-├── app/            # Next.js 应用
-├── browser/        # 浏览器操作
-├── llm/            # LLM 集成
-├── report/         # 测试报告
-├── storage/        # 数据存储
-└── types/          # 类型定义
-```
-
-### 开发命令
+### 构建镜像
 
 ```bash
-# 开发模式
-npm run dev
-
-# 构建生产版本
-npm run build
-
-# 启动生产服务
-npm start
-
-# 代码检查
-npm run lint
-
-# 命令行运行
-npm run agent
+docker build -t browser-automation-agent .
 ```
 
-### 扩展开发
+### 运行容器
 
-#### 添加新的浏览器操作
+```bash
+docker run -d \
+  -p 3000:3000 \
+  -e LLM_PROVIDER=qwen \
+  -e DASHSCOPE_API_KEY=your_key \
+  --security-opt seccomp=seccomp-profile.json \
+  browser-automation-agent
+```
 
-1. 在 `src/types/index.ts` 中定义操作类型
-2. 在 `src/browser/actions.ts` 中实现操作逻辑
-3. 在 LLM prompt 中添加操作说明
+### 使用 Docker Compose
 
-#### 集成新的 LLM
+```bash
+docker-compose up -d
+```
 
-1. 在 `src/llm/llmClient.ts` 中添加提供商配置
-2. 实现对应的 API 调用逻辑
-3. 更新环境变量配置
+详细部署说明请查看 [agent.md](file:///d:/frontProjects/agent/my-first-agent/agent.md#🔍-高级特性)。
 
 ## 🐛 常见问题
 
-<details>
-<summary><b>API Key 配置问题</b></summary>
+### 1. API Key 未配置
 
-**问题**：`DASHSCOPE_API_KEY` 为 `undefined`
+**问题**：`DASHSCOPE_API_KEY` 显示为 `undefined`
 
-**解决方案**：
-1. 确保 `.env` 文件存在
-2. 检查 API Key 是否正确
-3. 重启开发服务器
+**解决**：
+- 确保 `.env` 文件存在
+- 检查 API Key 是否正确配置
+- 重启开发服务器
 
-</details>
-
-<details>
-<summary><b>浏览器启动失败</b></summary>
+### 2. 浏览器启动失败
 
 **问题**：Playwright 浏览器未安装
 
-**解决方案**：
+**解决**：
 ```bash
 npx playwright install
 ```
 
-</details>
+### 3. 元素定位失败
 
-<details>
-<summary><b>元素定位失败</b></summary>
+**问题**：元素定位失败
 
-**问题**：找不到页面元素
+**解决**：
+- 使用动态模式，让 LLM 自动适应
+- 增加等待时间
+- 使用更稳定的选择器（data-testid, id）
 
-**解决方案**：
-1. 使用动态执行模式
-2. 增加等待时间
-3. 检查选择器是否正确
+更多问题请查看 [agent.md](file:///d:/frontProjects/agent/my-first-agent/agent.md#🐛-常见问题与解决方案)。
 
-</details>
+## 📈 性能优化
 
-<details>
-<summary><b>LLM 响应慢</b></summary>
+### 使用 Headless 模式
+```env
+HEADLESS=true
+```
 
-**问题**：模型响应时间过长
+### 使用更快的模型
+```env
+LLM_MODEL=qwen-turbo
+```
 
-**解决方案**：
-1. 使用更快的模型（qwen-turbo）
-2. 检查网络连接
-3. 优化提示词
+### 减少截图
+```env
+SCREENSHOT_ON_SUCCESS=false
+```
 
-</details>
+### 复用测试流程
+- 使用步骤库保存常用流程
+- 一键加载复用
 
-更多问题请查看 [agent.md](./agent.md#-常见问题) 或提交 Issue
+## 🔐 安全建议
 
-## 📊 性能优化
+1. **不要提交 `.env` 文件**到版本控制
+2. **定期更换 API Key**
+3. **启用 URL 白名单**限制访问域名
+4. **启用危险协议拦截**防止 XSS
+5. **使用 Docker 容器化**隔离运行环境
 
-- ✅ 使用 Headless 模式提升速度
-- ✅ 调整等待时间优化性能
-- ✅ 复用已保存的测试步骤
-- ✅ 批量执行测试用例
+详细安全说明请查看 [agent.md](file:///d:/frontProjects/agent/my-first-agent/agent.md#🔐-安全最佳实践)。
 
 ## 🤝 贡献指南
 
-我们欢迎所有形式的贡献！
-
-1. Fork 本仓库
+1. Fork 项目
 2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
 3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
 4. 推送到分支 (`git push origin feature/AmazingFeature`)
 5. 开启 Pull Request
 
-### 贡献类型
-
-- 🐛 Bug 修复
-- ✨ 新功能开发
-- 📝 文档改进
-- 🎨 UI/UX 优化
-- ⚡ 性能优化
-
 ## 📄 许可证
 
-本项目采用 [MIT](LICENSE) 许可证
+本项目采用 MIT 许可证 - 查看 [LICENSE](file:///d:/frontProjects/agent/my-first-agent/LICENSE) 文件了解详情
 
 ## 🙏 致谢
 
-感谢以下开源项目：
-
-- [Playwright](https://playwright.dev/) - 强大的浏览器自动化框架
-- [Next.js](https://nextjs.org/) - React 应用框架
-- [OpenAI](https://openai.com/) - GPT 系列模型
+- [Playwright](https://playwright.dev/) - 浏览器自动化框架
+- [Next.js](https://nextjs.org/) - React 框架
+- [OpenAI](https://openai.com/) - LLM API
 - [千问](https://tongyi.aliyun.com/) - 阿里云大语言模型
+- [Anthropic](https://www.anthropic.com/) - Claude 大语言模型
 
 ## 📞 联系方式
 
-- 📧 Email: [your-email]
-- 💬 Issue: [GitHub Issues](your-repo/issues)
-- 📖 文档: [agent.md](./agent.md)
+如有问题或建议，请提交 Issue 或 Pull Request。
 
 ---
 
-<div align="center">
-
-**如果这个项目对你有帮助，请给一个 ⭐️ Star！**
-
-Made with ❤️ by Browser Automation Team
-
-</div>
+**注意**：本项目仅供学习和研究使用，请遵守相关网站的使用条款和法律法规。
