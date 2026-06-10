@@ -1,5 +1,7 @@
 import { LLMClient } from '../llm/llmClient';
 import { SuccessCaseStorage, SuccessCase, FailureContext } from './successCaseStorage';
+import { VectorStore, getVectorStore, SearchResult } from './vectorStore';
+import { EmbeddingService, getEmbeddingService } from './embeddings';
 
 const SEMANTIC_FILTER_SYSTEM_PROMPT = `You are a similarity evaluator for test failure cases.
 
@@ -25,11 +27,42 @@ Output format (JSON only):
 
 Only include cases with similarityScore >= 0.6.`;
 
+export interface RetrievalConfig {
+  useVectorSearch: boolean;
+  useKeywordSearch: boolean;
+  useLLMFilter: boolean;
+  vectorWeight: number;
+  keywordWeight: number;
+  topK: number;
+  minSimilarity: number;
+}
+
+const DEFAULT_CONFIG: RetrievalConfig = {
+  useVectorSearch: true,
+  useKeywordSearch: true,
+  useLLMFilter: false, // 默认关闭 LLM 过滤，使用向量检索替代
+  vectorWeight: 0.6,
+  keywordWeight: 0.4,
+  topK: 5,
+  minSimilarity: 0.5,
+};
+
 export class HybridRetriever {
+  private vectorStore: VectorStore;
+  private embeddingService: EmbeddingService;
+  private config: RetrievalConfig;
+
   constructor(
     private storage: SuccessCaseStorage,
-    private llm: LLMClient
-  ) {}
+    private llm: LLMClient,
+    config?: Partial<RetrievalConfig>
+  ) {
+    this.vectorStore = getVectorStore();
+    this.embeddingService = getEmbeddingService();
+    this.config = { ...DEFAULT_CONFIG, ...config };
+    
+    console.log('[HybridRetriever] Initialized with config:', this.config);
+  }
 
   async retrieveSimilarCases(
     currentFailure: FailureContext
@@ -37,39 +70,75 @@ export class HybridRetriever {
     console.log('[HybridRetriever] Retrieving similar cases for error type:', 
       currentFailure.errorType);
 
-    const keywordCandidates = await this.keywordSearch(currentFailure);
+    // 并行执行向量检索和关键词检索
+    const [vectorResults, keywordCandidates] = await Promise.all([
+      this.config.useVectorSearch 
+        ? this.vectorSearch(currentFailure) 
+        : Promise.resolve([]),
+      this.config.useKeywordSearch 
+        ? this.keywordSearch(currentFailure) 
+        : Promise.resolve([]),
+    ]);
 
-    if (keywordCandidates.length === 0) {
-      console.log('[HybridRetriever] No keyword candidates found');
+    console.log('[HybridRetriever] Vector search found', vectorResults.length, 'results');
+    console.log('[HybridRetriever] Keyword search found', keywordCandidates.length, 'candidates');
+
+    // 合并结果
+    const mergedCases = this.mergeResults(vectorResults, keywordCandidates);
+
+    if (mergedCases.length === 0) {
+      console.log('[HybridRetriever] No cases found');
       return [];
     }
 
-    console.log('[HybridRetriever] Found', keywordCandidates.length, 
-      'keyword candidates');
+    // 如果启用 LLM 过滤，进行二次过滤
+    let filteredCases = mergedCases;
+    if (this.config.useLLMFilter && mergedCases.length > 0) {
+      filteredCases = await this.llmSemanticFilter(currentFailure, mergedCases);
+      console.log('[HybridRetriever] LLM filtered to', filteredCases.length, 'cases');
+    }
 
-    const semanticFiltered = await this.llmSemanticFilter(
-      currentFailure,
-      keywordCandidates
-    );
+    // 多因子排序
+    const rankedCases = this.multiFactorRanking(filteredCases, currentFailure);
 
-    console.log('[HybridRetriever] Semantic filtered to', 
-      semanticFiltered.length, 'cases');
-
-    const rankedCases = this.multiFactorRanking(
-      semanticFiltered,
-      currentFailure
-    );
-
-    const topCases = rankedCases.slice(0, 5);
+    const topCases = rankedCases.slice(0, this.config.topK);
 
     console.log('[HybridRetriever] Returning top', topCases.length, 'cases');
 
-    return topCases;
+    // 从 JSON 存储获取完整案例数据
+    const fullCases = await this.enrichCases(topCases);
+
+    return fullCases;
   }
 
-  private async keywordSearch(
-    failure: FailureContext
-  ): Promise<SuccessCase[]> {
+  /**
+   * 向量语义检索
+   */
+  private async vectorSearch(failure: FailureContext): Promise<SearchResult[]> {
+    try {
+      // 尝试按错误类型过滤搜索
+      const results = await this.vectorStore.searchByErrorType(
+        failure,
+        this.config.topK * 2
+      );
+
+      // 过滤低相似度结果
+      const filtered = results.filter(r => r.similarity >= this.config.minSimilarity);
+
+      console.log('[HybridRetriever] Vector search similarity scores:', 
+        filtered.map(r => ({ id: r.case.id, similarity: r.similarity.toFixed(2) })));
+
+      return filtered;
+    } catch (error: any) {
+      console.error('[HybridRetriever] Vector search failed:', error.message);
+      return [];
+    }
+  }
+
+  /**
+   * 关键词检索
+   */
+  private async keywordSearch(failure: FailureContext): Promise<SuccessCase[]> {
     const keywords = this.extractKeywords(failure);
     
     console.log('[HybridRetriever] Extracted keywords:', keywords);
@@ -84,6 +153,81 @@ export class HybridRetriever {
       'candidates matching error type');
 
     return typeFiltered;
+  }
+
+  /**
+   * 合并向量检索和关键词检索结果
+   */
+  private mergeResults(
+    vectorResults: SearchResult[],
+    keywordCases: SuccessCase[]
+  ): SuccessCase[] {
+    const mergedMap = new Map<string, SuccessCase>();
+
+    // 添加向量检索结果
+    for (const result of vectorResults) {
+      mergedMap.set(result.case.id, {
+        ...result.case,
+        metadata: {
+          ...result.case.metadata,
+          similarityScore: result.similarity,
+          source: 'vector',
+        },
+      });
+    }
+
+    // 添加关键词检索结果（如果不存在）
+    for (const caseData of keywordCases) {
+      if (!mergedMap.has(caseData.id)) {
+        mergedMap.set(caseData.id, {
+          ...caseData,
+          metadata: {
+            ...caseData.metadata,
+            similarityScore: 0.5, // 关键词匹配默认相似度
+            source: 'keyword',
+          },
+        });
+      } else {
+        // 如果已存在，更新相似度（加权平均）
+        const existing = mergedMap.get(caseData.id)!;
+        const vectorScore = existing.metadata.similarityScore || 0;
+        const keywordScore = 0.5;
+        const combinedScore = 
+          vectorScore * this.config.vectorWeight + 
+          keywordScore * this.config.keywordWeight;
+        
+        existing.metadata.similarityScore = combinedScore;
+        existing.metadata.source = 'hybrid';
+      }
+    }
+
+    return Array.from(mergedMap.values());
+  }
+
+  /**
+   * 从 JSON 存储获取完整案例数据
+   */
+  private async enrichCases(cases: SuccessCase[]): Promise<SuccessCase[]> {
+    const allCases = await this.storage.getAllCases();
+    
+    const enrichedCases = cases.map(partialCase => {
+      const fullCase = allCases.find(c => c.id === partialCase.id);
+      
+      if (fullCase) {
+        return {
+          ...fullCase,
+          metadata: {
+            ...fullCase.metadata,
+            similarityScore: partialCase.metadata.similarityScore,
+            source: partialCase.metadata.source,
+          },
+        };
+      }
+      
+      return partialCase;
+    });
+
+    return enrichedCases;
   }
 
   private extractKeywords(failure: FailureContext): string[] {
@@ -114,6 +258,9 @@ export class HybridRetriever {
     return uniqueKeywords.slice(0, 10);
   }
 
+  /**
+   * LLM 语义过滤（可选）
+   */
   private async llmSemanticFilter(
     failure: FailureContext,
     candidates: SuccessCase[]
@@ -205,7 +352,7 @@ Please evaluate the similarity of each historical case to the current failure an
             metadata: {
               ...successCase.metadata,
               similarityScore: similarityInfo.similarityScore
-            }
+            },
           };
         }
 
@@ -274,5 +421,20 @@ Please evaluate the similarity of each historical case to the current failure an
     } else {
       return 0.4;
     }
+  }
+
+  /**
+   * 更新配置
+   */
+  updateConfig(newConfig: Partial<RetrievalConfig>): void {
+    this.config = { ...this.config, ...newConfig };
+    console.log('[HybridRetriever] Config updated:', this.config);
+  }
+
+  /**
+   * 获取当前配置
+   */
+  getConfig(): RetrievalConfig {
+    return { ...this.config };
   }
 }

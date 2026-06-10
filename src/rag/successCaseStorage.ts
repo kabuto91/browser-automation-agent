@@ -1,6 +1,7 @@
 import { TestStep, StepResult, BrowserAction } from '../types';
 import * as fs from 'fs';
 import * as path from 'path';
+import { VectorStore, getVectorStore } from './vectorStore';
 
 export interface FailureContext {
   goal: string;
@@ -23,6 +24,7 @@ export interface CaseMetadata {
   successRate: number;
   tags: string[];
   similarityScore?: number;
+  source?: 'vector' | 'keyword' | 'hybrid' | 'llm';
 }
 
 export interface SuccessCase {
@@ -39,12 +41,18 @@ export class SuccessCaseStorage {
   private static instance: SuccessCaseStorage | null = null;
   private initialized = false;
   private cases: SuccessCase[] = [];
+  private vectorStore: VectorStore;
+  private syncEnabled: boolean = true;
 
   static getInstance(): SuccessCaseStorage {
     if (!SuccessCaseStorage.instance) {
       SuccessCaseStorage.instance = new SuccessCaseStorage();
     }
     return SuccessCaseStorage.instance;
+  }
+
+  constructor() {
+    this.vectorStore = getVectorStore();
   }
 
   async init(): Promise<void> {
@@ -66,6 +74,20 @@ export class SuccessCaseStorage {
         this.cases = [];
         this.saveToFile();
         console.log('[SuccessCaseStorage] Created new cases file');
+      }
+
+      // 初始化向量存储
+      await this.vectorStore.init();
+      console.log('[SuccessCaseStorage] Vector store initialized');
+
+      // 如果有现有数据且向量库为空，同步到向量库
+      if (this.syncEnabled && this.cases.length > 0) {
+        const stats = await this.vectorStore.getStats();
+        if (stats.count === 0) {
+          console.log('[SuccessCaseStorage] Syncing existing cases to vector store...');
+          await this.vectorStore.addCases(this.cases);
+          console.log('[SuccessCaseStorage] Synced', this.cases.length, 'cases to vector store');
+        }
       }
 
       this.initialized = true;
@@ -96,8 +118,16 @@ export class SuccessCaseStorage {
     const existingIndex = this.cases.findIndex(c => c.id === successCase.id);
     if (existingIndex >= 0) {
       this.cases[existingIndex] = successCase;
+      // 更新向量库
+      if (this.syncEnabled) {
+        await this.vectorStore.updateCase(successCase);
+      }
     } else {
       this.cases.push(successCase);
+      // 添加到向量库
+      if (this.syncEnabled) {
+        await this.vectorStore.addCase(successCase);
+      }
     }
 
     this.saveToFile();
@@ -172,6 +202,10 @@ export class SuccessCaseStorage {
     if (index >= 0) {
       this.cases.splice(index, 1);
       this.saveToFile();
+      // 从向量库删除
+      if (this.syncEnabled) {
+        await this.vectorStore.deleteCase(caseId);
+      }
       console.log(`[SuccessCaseStorage] Case deleted: ${caseId}`);
     }
   }
@@ -197,6 +231,26 @@ export class SuccessCaseStorage {
     await this.ensureInitialized();
     this.cases = [];
     this.saveToFile();
+    // 清空向量库
+    if (this.syncEnabled) {
+      await this.vectorStore.clear();
+    }
     console.log('[SuccessCaseStorage] All cases cleared');
+  }
+
+  /**
+   * 设置是否同步到向量库
+   */
+  setSyncEnabled(enabled: boolean): void {
+    this.syncEnabled = enabled;
+    console.log('[SuccessCaseStorage] Sync enabled:', enabled);
+  }
+
+  /**
+   * 获取向量库统计
+   */
+  async getVectorStoreStats(): Promise<{ count: number }> {
+    await this.ensureInitialized();
+    return await this.vectorStore.getStats();
   }
 }

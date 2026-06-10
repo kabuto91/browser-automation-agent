@@ -20,6 +20,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "chromadb": "^3.4.3",
     "dotenv": "^16.4.5",
     "next": "^14.2.0",
     "openai": "^4.67.0",
