@@ -314,6 +314,81 @@ export class LLMClient {
     const content = response.choices[0]?.message?.content || '{}';
     return JSON.parse(content) as T;
   }
+
+  /**
+   * 支持 Function Calling 的对话方法
+   */
+  async chatWithTools(
+    systemPrompt: string,
+    userMessage: string,
+    tools: OpenAI.Chat.ChatCompletionTool[]
+  ): Promise<OpenAI.Chat.ChatCompletion> {
+    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userMessage },
+    ];
+
+    const response = await this.client.chat.completions.create({
+      model: this.model,
+      messages,
+      max_tokens: this.maxTokens,
+      tools,
+      tool_choice: 'auto',
+    });
+
+    return response;
+  }
+
+  /**
+   * 支持 Function Calling 的多轮对话方法
+   */
+  async chatWithToolsAndHistory(
+    systemPrompt: string,
+    messages: ChatMessage[],
+    tools: OpenAI.Chat.ChatCompletionTool[]
+  ): Promise<OpenAI.Chat.ChatCompletion> {
+    const formattedMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+      { role: 'system', content: systemPrompt },
+      ...messages.map(m => ({
+        role: m.role as 'user' | 'assistant' | 'system',
+        content: m.content,
+      })),
+    ];
+
+    const response = await this.client.chat.completions.create({
+      model: this.model,
+      messages: formattedMessages,
+      max_tokens: this.maxTokens,
+      tools,
+      tool_choice: 'auto',
+    });
+
+    return response;
+  }
+
+  /**
+   * 继续对话（用于工具调用结果返回后）
+   */
+  async continueWithToolResult(
+    systemPrompt: string,
+    messages: OpenAI.Chat.ChatCompletionMessageParam[],
+    tools: OpenAI.Chat.ChatCompletionTool[]
+  ): Promise<OpenAI.Chat.ChatCompletion> {
+    const allMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+      { role: 'system', content: systemPrompt },
+      ...messages,
+    ];
+
+    const response = await this.client.chat.completions.create({
+      model: this.model,
+      messages: allMessages,
+      max_tokens: this.maxTokens,
+      tools,
+      tool_choice: 'auto',
+    });
+
+    return response;
+  }
 }
 
 let globalLLMClientInstance: LLMClient | null = null;
