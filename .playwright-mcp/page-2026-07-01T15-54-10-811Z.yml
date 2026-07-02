@@ -1,0 +1,84 @@
+- generic [ref=f7e2]:
+  - generic [ref=f7e3]:
+    - generic [ref=f7e143]:
+      - link "百度首页" [ref=f7e144] [cursor=pointer]:
+        - /url: /
+      - link "设置" [ref=f7e145] [cursor=pointer]:
+        - /url: javascript:;
+      - link "登录" [ref=f7e146] [cursor=pointer]:
+        - /url: https://passport.baidu.com/v2/?login&tpl=mn&u=http%3A%2F%2Fwww.baidu.com%2F&sms=5
+    - generic [ref=f7e22]:
+      - generic [ref=f7e147]: 请按“回车”键发起检索
+      - generic [ref=f7e23]:
+        - generic:
+          - link "到百度首页" [ref=f7e148] [cursor=pointer]:
+            - /url: /
+            - img "到百度首页" [ref=f7e149]
+          - generic [ref=f7e33]:
+            - generic [ref=f7e34]:
+              - textbox "世界杯死亡之组全部淘汰" [active] [ref=f7e36]: playwright
+              - generic [ref=f7e38]:
+                - generic [ref=f7e39]:
+                  - img [ref=f7e151] [cursor=pointer]
+                  - img [ref=f7e47] [cursor=pointer]
+                  - generic [ref=f7e50]:
+                    - img [ref=f7e54] [cursor=pointer]
+                    - img [ref=f7e59] [cursor=pointer]
+                - button "百度一下" [ref=f7e63] [cursor=pointer]
+            - list [ref=f7e156]:
+              - listitem [ref=f7e157] [cursor=pointer]:
+                - generic [ref=f7e158]:
+                  - text: playwright
+                  - generic [ref=f7e160]: 自动化工具
+              - listitem [ref=f7e161] [cursor=pointer]:
+                - generic [ref=f7e162]:
+                  - text: playwright
+                  - generic [ref=f7e164]: 翻译
+              - listitem [ref=f7e165] [cursor=pointer]:
+                - generic [ref=f7e166]:
+                  - text: playwright
+                  - generic [ref=f7e168]: 工具介绍
+              - listitem [ref=f7e169] [cursor=pointer]:
+                - generic [ref=f7e170]:
+                  - text: playwright
+                  - generic [ref=f7e172]: 和selenium优缺点
+              - listitem [ref=f7e173] [cursor=pointer]:
+                - generic [ref=f7e174]:
+                  - text: playwright
+                  - generic [ref=f7e176]: 怎么读
+              - listitem [ref=f7e177] [cursor=pointer]:
+                - generic [ref=f7e178]:
+                  - text: playwright
+                  - generic [ref=f7e180]: 定位元素方法大全
+              - listitem [ref=f7e181] [cursor=pointer]:
+                - generic [ref=f7e182]:
+                  - text: playwright
+                  - generic [ref=f7e184]: 浏览器
+              - listitem [ref=f7e185] [cursor=pointer]:
+                - generic [ref=f7e188]: honesty
+              - listitem [ref=f7e189] [cursor=pointer]:
+                - generic [ref=f7e192]: wright
+              - listitem [ref=f7e193] [cursor=pointer]:
+                - generic [ref=f7e196]: Playwright官方文档
+  - generic [ref=f7e198]:
+    - link [ref=f7e199] [cursor=pointer]:
+      - /url: https://chat.baidu.com/search?pd=csaitab&setype=csaitab&extParamsJson=%7B%22enter_type%22%3A%22search_a_tab%22%2C%22sa%22%3A%22vs_tab%22%7D
+      - img [ref=f7e200]
+    - generic [ref=f7e201]: 网页
+    - link "图片" [ref=f7e202] [cursor=pointer]:
+      - /url: http://image.baidu.com/i?tn=baiduimage&ps=1&ct=201326592&lm=-1&cl=2&nc=1&ie=utf-8
+    - link "资讯" [ref=f7e203] [cursor=pointer]:
+      - /url: https://www.baidu.com/s?rtt=1&bsst=1&cl=2&tn=news&ie=utf-8
+    - link "视频" [ref=f7e204] [cursor=pointer]:
+      - /url: http://v.baidu.com/v?ct=301989888&rn=20&pn=0&db=0&s=25&ie=utf-8
+    - link "笔记" [ref=f7e205] [cursor=pointer]:
+      - /url: http://www.baidu.com/s?pd=note&rpf=pc
+    - link "地图" [ref=f7e206] [cursor=pointer]:
+      - /url: https://map.baidu.com/?newmap=1&ie=utf-8&from=pstab&s=s
+    - link "贴吧" [ref=f7e207] [cursor=pointer]:
+      - /url: http://tieba.baidu.com/f?fr=wwwt&ie=utf-8
+    - link "文库" [ref=f7e208] [cursor=pointer]:
+      - /url: http://wenku.baidu.com/search?lm=0&od=0&ie=utf-8
+    - link "更多" [ref=f7e209] [cursor=pointer]:
+      - /url: http://www.baidu.com/more/
+    - generic [ref=f7e210]: 搜索工具

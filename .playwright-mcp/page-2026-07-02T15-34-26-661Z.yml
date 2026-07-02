@@ -1,0 +1,674 @@
+- generic [active] [ref=e1]:
+  - link "欢迎进入 百度一下，你就知道，盲人用户进入读屏幕模式请按快捷键Ctrl加Alt加R；阅读详细操作说明请按快捷键Ctrl加Alt加问号键。":
+    - /url: javascript:void(0)
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e145]:
+        - link "百度首页" [ref=e146] [cursor=pointer]:
+          - /url: /
+        - link "设置" [ref=e147] [cursor=pointer]:
+          - /url: javascript:;
+        - link "登录" [ref=e148] [cursor=pointer]:
+          - /url: https://passport.baidu.com/v2/?login&tpl=mn&u=http%3A%2F%2Fwww.baidu.com%2F&sms=5
+      - generic [ref=e23]:
+        - generic:
+          - link "到百度首页" [ref=e150] [cursor=pointer]:
+            - /url: /
+            - img "到百度首页" [ref=e151]
+          - generic [ref=e172]:
+            - textbox [ref=e174]: playwright
+            - generic [ref=e176]:
+              - generic [ref=e177]:
+                - img [ref=e179] [cursor=pointer]
+                - img [ref=e189] [cursor=pointer]
+                - generic [ref=e192]:
+                  - img [ref=e196] [cursor=pointer]
+                  - img [ref=e201] [cursor=pointer]
+              - button "百度一下" [ref=e205] [cursor=pointer]
+    - generic [ref=e209]:
+      - link [ref=e210] [cursor=pointer]:
+        - /url: https://chat.baidu.com/search?word=playwright&dyTabStr=MTIsMCwzLDEsMiwxMyw3LDYsNSw5&pd=csaitab&setype=csaitab&extParamsJson=%7B%22enter_type%22%3A%22search_a_tab%22%2C%22sa%22%3A%22vs_tab%22%2C%22apagelid%22%3A%2216972681774129304781%22%2C%22ori_lid%22%3A%2216972681774129304781%22%7D
+        - img [ref=e211]
+      - generic [ref=e212]: 网页
+      - link "图片" [ref=e213] [cursor=pointer]:
+        - /url: http://image.baidu.com/i?tn=baiduimage&ps=1&ct=201326592&lm=-1&cl=2&nc=1&ie=utf-8&lid=eb8b142600b954cd&dyTabStr=MTIsMCwzLDEsMiwxMyw3LDYsNSw5&word=playwright
+      - link "资讯" [ref=e214] [cursor=pointer]:
+        - /url: https://www.baidu.com/s?rtt=1&bsst=1&cl=2&tn=news&ie=utf-8&word=playwright
+      - link "视频" [ref=e215] [cursor=pointer]:
+        - /url: /sf/vsearch?pd=video&tn=vsearch&lid=eb8b142600b954cd&ie=utf-8&wd=playwright&rsv_spt=7&rsv_bp=1&f=8&oq=playwright&rsv_pq=eb8b142600b954cd&rsv_t=c8cdSn6qQxle%2FB7dvOZvpE1Qabi3D2wbWNcp514dV1%2Boz55WRp42XGRWkBA
+      - link "笔记" [ref=e216] [cursor=pointer]:
+        - /url: https://www.baidu.com/s?pd=note&rpf=pc&dyTabStr=MTIsMCwzLDEsMiwxMyw3LDYsNSw5&word=playwright
+      - link "地图" [ref=e217] [cursor=pointer]:
+        - /url: https://map.baidu.com/?newmap=1&ie=utf-8&from=pstab&s=s%26wd%3Dplaywright
+      - link "贴吧" [ref=e218] [cursor=pointer]:
+        - /url: http://tieba.baidu.com/f?fr=wwwt&ie=utf-8&dyTabStr=MTIsMCwzLDEsMiwxMyw3LDYsNSw5&kw=playwright
+      - link "文库" [ref=e219] [cursor=pointer]:
+        - /url: http://wenku.baidu.com/search?lm=0&od=0&ie=utf-8&dyTabStr=MTIsMCwzLDEsMiwxMyw3LDYsNSw5&word=playwright
+      - link "更多" [ref=e220] [cursor=pointer]:
+        - /url: http://www.baidu.com/more/
+      - generic [ref=e221] [cursor=pointer]: 搜索工具
+    - generic [ref=e222]:
+      - generic [ref=e223]:
+        - table [ref=e225]:
+          - rowgroup [ref=e226]:
+            - row "相关搜索  playwright自动化工具  反应力训练app  playwright和selenium优缺点  playwrite  playwright python  playwright-cli    换一换 热搜榜 民生榜 财经榜  庆祝建党105周年大会温暖瞬间 1 多地停运、停航 台风来了 热 2 机票捡漏黄金期来了 热 3 各地多措并举助推高质量发展 4 被盗佛像现身馆内？观复博物馆回应 新 5 名山景区为了抢人爬山直接卷起来了 6 伊拉克女议员家中搜出黄金内衣 7 出现性能下降问题 DeepSeek回应 热 8 AI演员已经能演出情绪变化了 热 9 八毛八一只 有家庭一晚捉蝉350只 热 10 地铁吐血女孩称生命进入倒计时 热 11 “深圳全域开放无人驾驶”系误读 12 男子不掀马桶圈 妻子跟擦10年崩溃 13 几十年后城市有多热？中国气象局预判 热 14 老人手动关400斤电动门被砸进ICU 15 批发商称雪糕销量近乎减半" [ref=e227]:
+              - cell "相关搜索  playwright自动化工具  反应力训练app  playwright和selenium优缺点  playwrite  playwright python  playwright-cli    换一换 热搜榜 民生榜 财经榜  庆祝建党105周年大会温暖瞬间 1 多地停运、停航 台风来了 热 2 机票捡漏黄金期来了 热 3 各地多措并举助推高质量发展 4 被盗佛像现身馆内？观复博物馆回应 新 5 名山景区为了抢人爬山直接卷起来了 6 伊拉克女议员家中搜出黄金内衣 7 出现性能下降问题 DeepSeek回应 热 8 AI演员已经能演出情绪变化了 热 9 八毛八一只 有家庭一晚捉蝉350只 热 10 地铁吐血女孩称生命进入倒计时 热 11 “深圳全域开放无人驾驶”系误读 12 男子不掀马桶圈 妻子跟擦10年崩溃 13 几十年后城市有多热？中国气象局预判 热 14 老人手动关400斤电动门被砸进ICU 15 批发商称雪糕销量近乎减半" [ref=e228]:
+                - generic [ref=e229]:
+                  - generic [ref=e235]:
+                    - generic [ref=e237]: 相关搜索
+                    - generic [ref=e238]:
+                      - link " playwright自动化工具" [ref=e241] [cursor=pointer]:
+                        - /url: /s?rsv_idx=1&wd=playwright%E8%87%AA%E5%8A%A8%E5%8C%96%E5%B7%A5%E5%85%B7&fenlei=256&usm=3&ie=utf-8&rsv_pq=eb8b142600b954cd&oq=playwright&rsv_t=ed37u%2FepBV8ZCPIniQGi%2F8tCwnU2tfkHZs%2BSJayTsK6fj8KePOvvpvueaEc&rfqid=eb8b142600b954cd&rsv_dl=0_prs_28616_1&rq=playwright&rsf=101631101
+                        - generic [ref=e242]:
+                          - generic [ref=e243]: 
+                          - generic [ref=e244]: playwright自动化工具
+                      - link " 反应力训练app" [ref=e247] [cursor=pointer]:
+                        - /url: /s?rsv_idx=1&wd=%E5%8F%8D%E5%BA%94%E5%8A%9B%E8%AE%AD%E7%BB%83app&fenlei=256&usm=3&ie=utf-8&rsv_pq=eb8b142600b954cd&oq=playwright&rsv_t=ed37u%2FepBV8ZCPIniQGi%2F8tCwnU2tfkHZs%2BSJayTsK6fj8KePOvvpvueaEc&rfqid=eb8b142600b954cd&rsv_dl=0_prs_28616_2&rq=playwright&rsf=101634503
+                        - generic [ref=e248]:
+                          - generic [ref=e249]: 
+                          - generic [ref=e250]: 反应力训练app
+                      - link " playwright和selenium优缺点" [ref=e253] [cursor=pointer]:
+                        - /url: /s?rsv_idx=1&wd=playwright%E5%92%8Cselenium%E4%BC%98%E7%BC%BA%E7%82%B9&fenlei=256&usm=3&ie=utf-8&rsv_pq=eb8b142600b954cd&oq=playwright&rsv_t=ed37u%2FepBV8ZCPIniQGi%2F8tCwnU2tfkHZs%2BSJayTsK6fj8KePOvvpvueaEc&rfqid=eb8b142600b954cd&rsv_dl=0_prs_28616_3&rq=playwright&rsf=101631101
+                        - generic [ref=e254]:
+                          - generic [ref=e255]: 
+                          - generic [ref=e256]: playwright和selenium优缺点
+                      - link " playwrite" [ref=e259] [cursor=pointer]:
+                        - /url: /s?rsv_idx=1&wd=playwrite&fenlei=256&usm=3&ie=utf-8&rsv_pq=eb8b142600b954cd&oq=playwright&rsv_t=ed37u%2FepBV8ZCPIniQGi%2F8tCwnU2tfkHZs%2BSJayTsK6fj8KePOvvpvueaEc&rfqid=eb8b142600b954cd&rsv_dl=0_prs_28616_4&rq=playwright&rsf=100631101
+                        - generic [ref=e260]:
+                          - generic [ref=e261]: 
+                          - generic [ref=e262]: playwrite
+                      - link " playwright python" [ref=e265] [cursor=pointer]:
+                        - /url: /s?rsv_idx=1&wd=playwright%20python&fenlei=256&usm=3&ie=utf-8&rsv_pq=eb8b142600b954cd&oq=playwright&rsv_t=ed37u%2FepBV8ZCPIniQGi%2F8tCwnU2tfkHZs%2BSJayTsK6fj8KePOvvpvueaEc&rfqid=eb8b142600b954cd&rsv_dl=0_prs_28616_5&rq=playwright&rsf=100633101
+                        - generic [ref=e266]:
+                          - generic [ref=e267]: 
+                          - generic [ref=e268]: playwright python
+                      - link " playwright-cli" [ref=e271] [cursor=pointer]:
+                        - /url: /s?rsv_idx=1&wd=playwright-cli&fenlei=256&usm=3&ie=utf-8&rsv_pq=eb8b142600b954cd&oq=playwright&rsv_t=ed37u%2FepBV8ZCPIniQGi%2F8tCwnU2tfkHZs%2BSJayTsK6fj8KePOvvpvueaEc&rfqid=eb8b142600b954cd&rsv_dl=0_prs_28616_6&rq=playwright&rsf=100631161
+                        - generic [ref=e272]:
+                          - generic [ref=e273]: 
+                          - generic [ref=e274]: playwright-cli
+                  - generic [ref=e278]:
+                    - generic "百度热搜" [ref=e279]:
+                      - link " " [ref=e280] [cursor=pointer]:
+                        - /url: https://top.baidu.com/board?platform=pc&sa=pcindex_a_right
+                        - generic [ref=e281]: 
+                        - generic [ref=e282]: 
+                      - link " 换一换" [ref=e284] [cursor=pointer]:
+                        - /url: javascript:void(0);
+                        - generic [ref=e285]: 
+                        - text: 换一换
+                    - generic [ref=e286]:
+                      - generic [ref=e287] [cursor=pointer]: 热搜榜
+                      - generic [ref=e288] [cursor=pointer]: 民生榜
+                      - generic [ref=e289] [cursor=pointer]: 财经榜
+                    - generic [ref=e291]:
+                      - generic [ref=e293]:
+                        - generic [ref=e295]: 
+                        - link "庆祝建党105周年大会温暖瞬间" [ref=e296] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E5%BA%86%E7%A5%9D%E5%BB%BA%E5%85%9A105%E5%91%A8%E5%B9%B4%E5%A4%A7%E4%BC%9A%E6%B8%A9%E6%9A%96%E7%9E%AC%E9%97%B4&fenlei=256&usm=3&ie=utf-8&rsv_pq=eb8b142600b954cd&oq=playwright&rsv_t=ed37u%2FepBV8ZCPIniQGi%2F8tCwnU2tfkHZs%2BSJayTsK6fj8KePOvvpvueaEc&rqid=eb8b142600b954cd&rsf=beab83da6aba1f5beeb849134a0ceff5_1_15_1&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                      - generic [ref=e298]:
+                        - generic [ref=e299]: "1"
+                        - link "多地停运、停航 台风来了" [ref=e300] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E5%A4%9A%E5%9C%B0%E5%81%9C%E8%BF%90%E3%80%81%E5%81%9C%E8%88%AA%20%E5%8F%B0%E9%A3%8E%E6%9D%A5%E4%BA%86&fenlei=256&usm=3&ie=utf-8&rsv_pq=eb8b142600b954cd&oq=playwright&rsv_t=ed37u%2FepBV8ZCPIniQGi%2F8tCwnU2tfkHZs%2BSJayTsK6fj8KePOvvpvueaEc&rqid=eb8b142600b954cd&rsf=beab83da6aba1f5beeb849134a0ceff5_1_15_2&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                        - generic [ref=e301]: 热
+                      - generic [ref=e303]:
+                        - generic [ref=e304]: "2"
+                        - link "机票捡漏黄金期来了" [ref=e305] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E6%9C%BA%E7%A5%A8%E6%8D%A1%E6%BC%8F%E9%BB%84%E9%87%91%E6%9C%9F%E6%9D%A5%E4%BA%86&fenlei=256&usm=3&ie=utf-8&rsv_pq=eb8b142600b954cd&oq=playwright&rsv_t=ed37u%2FepBV8ZCPIniQGi%2F8tCwnU2tfkHZs%2BSJayTsK6fj8KePOvvpvueaEc&rqid=eb8b142600b954cd&rsf=beab83da6aba1f5beeb849134a0ceff5_1_15_3&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                        - generic [ref=e306]: 热
+                      - generic [ref=e308]:
+                        - generic [ref=e309]: "3"
+                        - link "各地多措并举助推高质量发展" [ref=e310] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E5%90%84%E5%9C%B0%E5%A4%9A%E6%8E%AA%E5%B9%B6%E4%B8%BE%E5%8A%A9%E6%8E%A8%E9%AB%98%E8%B4%A8%E9%87%8F%E5%8F%91%E5%B1%95&fenlei=256&usm=3&ie=utf-8&rsv_pq=eb8b142600b954cd&oq=playwright&rsv_t=ed37u%2FepBV8ZCPIniQGi%2F8tCwnU2tfkHZs%2BSJayTsK6fj8KePOvvpvueaEc&rqid=eb8b142600b954cd&rsf=beab83da6aba1f5beeb849134a0ceff5_1_15_4&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                      - generic [ref=e312]:
+                        - generic [ref=e313]: "4"
+                        - link "被盗佛像现身馆内？观复博物馆回应" [ref=e314] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E8%A2%AB%E7%9B%97%E4%BD%9B%E5%83%8F%E7%8E%B0%E8%BA%AB%E9%A6%86%E5%86%85%EF%BC%9F%E8%A7%82%E5%A4%8D%E5%8D%9A%E7%89%A9%E9%A6%86%E5%9B%9E%E5%BA%94&fenlei=256&usm=3&ie=utf-8&rsv_pq=eb8b142600b954cd&oq=playwright&rsv_t=ed37u%2FepBV8ZCPIniQGi%2F8tCwnU2tfkHZs%2BSJayTsK6fj8KePOvvpvueaEc&rqid=eb8b142600b954cd&rsf=beab83da6aba1f5beeb849134a0ceff5_1_15_5&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                        - generic [ref=e315]: 新
+                      - generic [ref=e317]:
+                        - generic [ref=e318]: "5"
+                        - link "名山景区为了抢人爬山直接卷起来了" [ref=e319] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E5%90%8D%E5%B1%B1%E6%99%AF%E5%8C%BA%E4%B8%BA%E4%BA%86%E6%8A%A2%E4%BA%BA%E7%88%AC%E5%B1%B1%E7%9B%B4%E6%8E%A5%E5%8D%B7%E8%B5%B7%E6%9D%A5%E4%BA%86&fenlei=256&usm=3&ie=utf-8&rsv_pq=eb8b142600b954cd&oq=playwright&rsv_t=ed37u%2FepBV8ZCPIniQGi%2F8tCwnU2tfkHZs%2BSJayTsK6fj8KePOvvpvueaEc&rqid=eb8b142600b954cd&rsf=beab83da6aba1f5beeb849134a0ceff5_1_15_6&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                      - generic [ref=e321]:
+                        - generic [ref=e322]: "6"
+                        - link "伊拉克女议员家中搜出黄金内衣" [ref=e323] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E4%BC%8A%E6%8B%89%E5%85%8B%E5%A5%B3%E8%AE%AE%E5%91%98%E5%AE%B6%E4%B8%AD%E6%90%9C%E5%87%BA%E9%BB%84%E9%87%91%E5%86%85%E8%A1%A3&fenlei=256&usm=3&ie=utf-8&rsv_pq=eb8b142600b954cd&oq=playwright&rsv_t=ed37u%2FepBV8ZCPIniQGi%2F8tCwnU2tfkHZs%2BSJayTsK6fj8KePOvvpvueaEc&rqid=eb8b142600b954cd&rsf=beab83da6aba1f5beeb849134a0ceff5_1_15_7&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                      - generic [ref=e325]:
+                        - generic [ref=e326]: "7"
+                        - link "出现性能下降问题 DeepSeek回应" [ref=e327] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E5%87%BA%E7%8E%B0%E6%80%A7%E8%83%BD%E4%B8%8B%E9%99%8D%E9%97%AE%E9%A2%98%20DeepSeek%E5%9B%9E%E5%BA%94&fenlei=256&usm=3&ie=utf-8&rsv_pq=eb8b142600b954cd&oq=playwright&rsv_t=ed37u%2FepBV8ZCPIniQGi%2F8tCwnU2tfkHZs%2BSJayTsK6fj8KePOvvpvueaEc&rqid=eb8b142600b954cd&rsf=beab83da6aba1f5beeb849134a0ceff5_1_15_8&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                        - generic [ref=e328]: 热
+                      - generic [ref=e330]:
+                        - generic [ref=e331]: "8"
+                        - link "AI演员已经能演出情绪变化了" [ref=e332] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=AI%E6%BC%94%E5%91%98%E5%B7%B2%E7%BB%8F%E8%83%BD%E6%BC%94%E5%87%BA%E6%83%85%E7%BB%AA%E5%8F%98%E5%8C%96%E4%BA%86&fenlei=256&usm=3&ie=utf-8&rsv_pq=eb8b142600b954cd&oq=playwright&rsv_t=eb54TZYCjTZVa0cDq3VwH2jgqCouBLOROWMGM8eJg0ffP96DICKGMooZcNs&rqid=eb8b142600b954cd&rsf=beab83da6aba1f5beeb849134a0ceff5_1_15_9&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                        - generic [ref=e333]: 热
+                      - generic [ref=e335]:
+                        - generic [ref=e336]: "9"
+                        - link "八毛八一只 有家庭一晚捉蝉350只" [ref=e337] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E5%85%AB%E6%AF%9B%E5%85%AB%E4%B8%80%E5%8F%AA%20%E6%9C%89%E5%AE%B6%E5%BA%AD%E4%B8%80%E6%99%9A%E6%8D%89%E8%9D%89350%E5%8F%AA&fenlei=256&usm=3&ie=utf-8&rsv_pq=eb8b142600b954cd&oq=playwright&rsv_t=eb54TZYCjTZVa0cDq3VwH2jgqCouBLOROWMGM8eJg0ffP96DICKGMooZcNs&rqid=eb8b142600b954cd&rsf=beab83da6aba1f5beeb849134a0ceff5_1_15_10&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                        - generic [ref=e338]: 热
+                      - generic [ref=e340]:
+                        - generic [ref=e341]: "10"
+                        - link "地铁吐血女孩称生命进入倒计时" [ref=e342] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E5%9C%B0%E9%93%81%E5%90%90%E8%A1%80%E5%A5%B3%E5%AD%A9%E7%A7%B0%E7%94%9F%E5%91%BD%E8%BF%9B%E5%85%A5%E5%80%92%E8%AE%A1%E6%97%B6&fenlei=256&usm=3&ie=utf-8&rsv_pq=eb8b142600b954cd&oq=playwright&rsv_t=eb54TZYCjTZVa0cDq3VwH2jgqCouBLOROWMGM8eJg0ffP96DICKGMooZcNs&rqid=eb8b142600b954cd&rsf=beab83da6aba1f5beeb849134a0ceff5_1_15_11&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                        - generic [ref=e343]: 热
+                      - generic [ref=e345]:
+                        - generic [ref=e346]: "11"
+                        - link "“深圳全域开放无人驾驶”系误读" [ref=e347] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E2%80%9C%E6%B7%B1%E5%9C%B3%E5%85%A8%E5%9F%9F%E5%BC%80%E6%94%BE%E6%97%A0%E4%BA%BA%E9%A9%BE%E9%A9%B6%E2%80%9D%E7%B3%BB%E8%AF%AF%E8%AF%BB&fenlei=256&usm=3&ie=utf-8&rsv_pq=eb8b142600b954cd&oq=playwright&rsv_t=eb54TZYCjTZVa0cDq3VwH2jgqCouBLOROWMGM8eJg0ffP96DICKGMooZcNs&rqid=eb8b142600b954cd&rsf=beab83da6aba1f5beeb849134a0ceff5_1_15_12&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                      - generic [ref=e349]:
+                        - generic [ref=e350]: "12"
+                        - link "男子不掀马桶圈 妻子跟擦10年崩溃" [ref=e351] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E7%94%B7%E5%AD%90%E4%B8%8D%E6%8E%80%E9%A9%AC%E6%A1%B6%E5%9C%88%20%E5%A6%BB%E5%AD%90%E8%B7%9F%E6%93%A610%E5%B9%B4%E5%B4%A9%E6%BA%83&fenlei=256&usm=3&ie=utf-8&rsv_pq=eb8b142600b954cd&oq=playwright&rsv_t=eb54TZYCjTZVa0cDq3VwH2jgqCouBLOROWMGM8eJg0ffP96DICKGMooZcNs&rqid=eb8b142600b954cd&rsf=beab83da6aba1f5beeb849134a0ceff5_1_15_13&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                      - generic [ref=e353]:
+                        - generic [ref=e354]: "13"
+                        - link "几十年后城市有多热？中国气象局预判" [ref=e355] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E5%87%A0%E5%8D%81%E5%B9%B4%E5%90%8E%E5%9F%8E%E5%B8%82%E6%9C%89%E5%A4%9A%E7%83%AD%EF%BC%9F%E4%B8%AD%E5%9B%BD%E6%B0%94%E8%B1%A1%E5%B1%80%E9%A2%84%E5%88%A4&fenlei=256&usm=3&ie=utf-8&rsv_pq=eb8b142600b954cd&oq=playwright&rsv_t=eb54TZYCjTZVa0cDq3VwH2jgqCouBLOROWMGM8eJg0ffP96DICKGMooZcNs&rqid=eb8b142600b954cd&rsf=beab83da6aba1f5beeb849134a0ceff5_1_15_14&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                        - generic [ref=e356]: 热
+                      - generic [ref=e358]:
+                        - generic [ref=e359]: "14"
+                        - link "老人手动关400斤电动门被砸进ICU" [ref=e360] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E8%80%81%E4%BA%BA%E6%89%8B%E5%8A%A8%E5%85%B3400%E6%96%A4%E7%94%B5%E5%8A%A8%E9%97%A8%E8%A2%AB%E7%A0%B8%E8%BF%9BICU&fenlei=256&usm=3&ie=utf-8&rsv_pq=eb8b142600b954cd&oq=playwright&rsv_t=eb54TZYCjTZVa0cDq3VwH2jgqCouBLOROWMGM8eJg0ffP96DICKGMooZcNs&rqid=eb8b142600b954cd&rsf=beab83da6aba1f5beeb849134a0ceff5_1_15_15&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+                      - generic [ref=e362]:
+                        - generic [ref=e363]: "15"
+                        - link "批发商称雪糕销量近乎减半" [ref=e364] [cursor=pointer]:
+                          - /url: /s?rsv_idx=1&wd=%E6%89%B9%E5%8F%91%E5%95%86%E7%A7%B0%E9%9B%AA%E7%B3%95%E9%94%80%E9%87%8F%E8%BF%91%E4%B9%8E%E5%87%8F%E5%8D%8A&fenlei=256&usm=3&ie=utf-8&rsv_pq=eb8b142600b954cd&oq=playwright&rsv_t=eb54TZYCjTZVa0cDq3VwH2jgqCouBLOROWMGM8eJg0ffP96DICKGMooZcNs&rqid=eb8b142600b954cd&rsf=beab83da6aba1f5beeb849134a0ceff5_16_30_16&rsv_dl=0_right_fyb_pchot_20811&sa=0_right_fyb_pchot_20811
+        - generic [ref=e365]:
+          - generic [ref=e366]:
+            - generic [ref=e371]:
+              - link [ref=e372] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=B6dOL0Ytk9aVgUONIf-PAFzUYdVDsV2u_4dHzjVEM1gNZ__hsVol17TbaCvFn2tka1opBHInsmDq62Pchl2cB_
+                - img [ref=e376]
+              - link "playwright - 剧作家 常见释义" [ref=e380] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=B6dOL0Ytk9aVgUONIf-PAFzUYdVDsV2u_4dHzjVEM1gNZ__hsVol17TbaCvFn2tka1opBHInsmDq62Pchl2cB_
+                - generic [ref=e381]: playwright - 剧作家
+                - generic [ref=e382]: 常见释义
+              - generic [ref=e385]:
+                - generic [ref=e386]:
+                  - generic [ref=e388] [cursor=pointer]:
+                    - generic [ref=e389]: 英[ˈpleɪraɪt]
+                    - img [ref=e392]
+                  - img [ref=e400] [cursor=pointer]
+                - generic [ref=e406]:
+                  - generic [ref=e408] [cursor=pointer]:
+                    - generic [ref=e409]: 美[ˈpleɪraɪt]
+                    - img [ref=e412]
+                  - img [ref=e420] [cursor=pointer]
+              - generic [ref=e428]:
+                - generic [ref=e429]: n.
+                - generic [ref=e430]: 剧作家;
+              - generic [ref=e431]:
+                - generic [ref=e432]:
+                  - generic [ref=e433]: 例句
+                  - generic [ref=e434]:
+                    - generic [ref=e435]:
+                      - generic [ref=e436]:
+                        - generic [ref=e437]: David Mamet has long been considered the leading American playwright of his generation.
+                        - img [ref=e442] [cursor=pointer]
+                      - generic [ref=e446]: 长期以来，戴维·马梅特一直被视为同代人中最杰出的美国剧作家。
+                    - generic:
+                      - link:
+                        - /url: http://www.baidu.com/link?url=iaDiuKn27qZF7uxw2mfMdFjS3D1Llhzpw-3PDPQ3t5E6_T_xnYdWkMA7WvjZGesITDzQzFvMZwymxbxxQDbkVgZPc0ZwFdrZlc99nmY9YKe
+                - generic [ref=e449]: 来源于：《柯林斯高阶英汉双解学习词典》
+              - generic [ref=e450]:
+                - generic [ref=e451]: 变形
+                - generic [ref=e453]:
+                  - generic [ref=e454]: 复数
+                  - generic [ref=e456]:
+                    - link "playwrights" [ref=e457] [cursor=pointer]:
+                      - /url: /s?rsv_idx=1&wd=playwrights%E7%BF%BB%E8%AF%91&fenlei=256&usm=3&ie=utf-8&rsv_pq=eb8b142600b954cd&oq=playwright&rsv_t=e33efHzmW3pmpvFLnXn4ny30%2FjVQns2nB6SoEVJpNRvdHyyjQgQsknXxhfI&sa=re_fy_huisou
+                    - generic [ref=e458]: 
+            - generic [ref=e466]:
+              - generic [ref=e468]:
+                - generic [ref=e471]:
+                  - generic [ref=e472]:
+                    - generic [ref=e473]:
+                      - generic [ref=e475]: 技术上它是个什么工具
+                      - text: 
+                    - generic [ref=e478]:
+                      - generic [ref=e484]:
+                        - paragraph [ref=e485]:
+                          - text: Playwright 是微软在 2020 年开源的一个项目，主要用来做 Web 应用的端到端自动化测试 。通俗点说，就是写一段代码，让电脑自动打开浏览器，像真人一样去点击按钮、填写表单、截图保存，最后告诉你是通过还是失败 。它不仅能测试网页，还能用来抓取数据或执行重复的网页操作任务。‌‌‌
+                          - generic [ref=e491] [cursor=pointer]: 
+                        - list [ref=e492]:
+                          - listitem [ref=e493]:
+                            - mark [ref=e494]:
+                              - text: ‌
+                              - strong [ref=e495]: 支持范围广
+                              - text: ‌
+                            - text: ：它能控制几乎所有主流浏览器，包括 Chrome、Firefox、Safari 以及微软的 Edge 。
+                          - listitem [ref=e496]:
+                            - mark [ref=e497]:
+                              - text: ‌
+                              - strong [ref=e498]: 多语言通用
+                              - text: ‌
+                            - text: ：不管你是用 Python、JavaScript、Java 还是.NET 写代码，都能直接调用它的接口 。
+                          - listitem [ref=e499]:
+                            - mark [ref=e500]:
+                              - text: ‌
+                              - strong [ref=e501]: 官方文档
+                              - text: ‌
+                            - text: ：想查详细用法，可以直接访问官网（
+                            - link "playwright.dev" [ref=e502] [cursor=pointer]:
+                              - /url: https://playwright.dev/
+                            - text: ）。‌‌‌
+                            - generic [ref=e508] [cursor=pointer]: 
+                      - link "" [ref=e516] [cursor=pointer]:
+                        - /url: http://www.baidu.com/link?url=rnYgWiB33s29q1xOjjrFXYlOMWaJHXbDbNM4GUYgqA6NtiujGDEwtrIvsmp4ruUYXnOQrHotRadVkwniRsA0a_
+                        - generic [ref=e518]:
+                          - generic [ref=e523]: 
+                          - text: 
+                  - generic [ref=e524]:
+                    - generic [ref=e525]:
+                      - generic [ref=e527]: 这个工具有什么厉害的地方
+                      - text: 
+                    - generic [ref=e536]:
+                      - paragraph [ref=e537]:
+                        - text: 比起老牌的测试工具，Playwright 在设计上更贴近现代网页的运行方式，解决了很多自动化脚本容易“报错”或“不稳定”的问题 。‌‌‌
+                        - generic [ref=e543] [cursor=pointer]: 
+                      - list [ref=e544]:
+                        - listitem [ref=e545]:
+                          - mark [ref=e546]:
+                            - text: ‌
+                            - strong [ref=e547]: 自动等待不报错
+                            - text: ‌
+                          - text: ：很多工具需要手动写代码告诉程序“等 3 秒再点击”，但 Playwright 会自己判断元素是否加载好了、能不能点，不用人工设时间，脚本更稳定 。
+                        - listitem [ref=e548]:
+                          - mark [ref=e549]:
+                            - text: ‌
+                            - strong [ref=e550]: 测试环境隔离
+                            - text: ‌
+                          - text: ：每次运行测试，它都会创建一个全新的浏览器环境，就像刚装好的系统一样，避免上一次测试的缓存或登录状态影响下一次结果 。
+                        - listitem [ref=e551]:
+                          - mark [ref=e552]:
+                            - text: ‌
+                            - strong [ref=e553]: 自带调试神器
+                            - text: ‌
+                          - text: ：它有一个“代码生成器”，你在浏览器里点一遍操作，它自动帮你写出对应的代码；还有一个“追踪查看器”，测试失败了能像看录像一样回放每一步，方便找问题 。
+                        - listitem [ref=e554]:
+                          - mark [ref=e555]:
+                            - text: ‌
+                            - strong [ref=e556]: 无头模式运行
+                            - text: ‌
+                          - text: ：支持在后台静默运行（不显示浏览器界面），特别适合在服务器或云端自动执行任务，节省资源 。‌‌‌
+                          - button "参考文档，单指双击即可执行" [ref=e557]:
+                            - generic [ref=e561] [cursor=pointer]: 百科
+                          - text: ‌
+                          - generic [ref=e567] [cursor=pointer]: 
+                  - generic [ref=e568]:
+                    - generic [ref=e569]:
+                      - generic [ref=e571]: 新手怎么安装和使用
+                      - text: 
+                    - generic [ref=e574]:
+                      - generic [ref=e580]:
+                        - paragraph [ref=e581]: 如果你是想学自动化测试，入门门槛不算高，只要会一点基础编程命令就能跑起来。以下是基于 Python 环境的快速上手步骤：
+                        - list [ref=e582]:
+                          - listitem [ref=e583]:
+                            - mark [ref=e584]:
+                              - text: ‌
+                              - strong [ref=e585]: 安装依赖库
+                              - text: ‌
+                            - text: ：
+                            - text: 在电脑终端输入命令
+                            - code [ref=e586]: pip install playwright
+                            - text: 安装主程序 。‌‌‌
+                            - generic [ref=e592] [cursor=pointer]: 
+                          - listitem [ref=e593]:
+                            - mark [ref=e594]:
+                              - text: ‌
+                              - strong [ref=e595]: 下载浏览器驱动
+                              - text: ‌
+                            - text: ：
+                            - text: 接着输入
+                            - code [ref=e596]: playwright install
+                            - text: ，它会自动下载 Chrome、Firefox 等浏览器的内核文件 。‌‌‌
+                            - generic [ref=e602] [cursor=pointer]: 
+                          - listitem [ref=e603]:
+                            - mark [ref=e604]:
+                              - text: ‌
+                              - strong [ref=e605]: 录制第一个脚本
+                              - text: ‌
+                            - text: ：
+                            - text: 不想手写代码？输入
+                            - code [ref=e606]: npx playwright codegen https://www.baidu.com
+                            - text: ，会弹出一个浏览器窗口，你在里面随便点，它会在旁边实时生成代码，复制下来就能用 。‌‌‌
+                            - generic [ref=e612] [cursor=pointer]: 
+                          - listitem [ref=e613]:
+                            - mark [ref=e614]:
+                              - text: ‌
+                              - strong [ref=e615]: 运行测试
+                              - text: ‌
+                            - text: ：
+                            - text: 写好脚本后，通过命令行运行即可，它支持生成 HTML 报告，直观展示测试结果 。‌‌‌
+                            - generic [ref=e621] [cursor=pointer]: 
+                      - link "" [ref=e629] [cursor=pointer]:
+                        - /url: http://www.baidu.com/link?url=rnYgWiB33s29q1xOjjrFXYlOMWaJHXbDbNM4GUYgqA6NtiujGDEwtrIvsmp4ruUYrzCbXMVOiyoIpu52uGiyL_
+                        - generic [ref=e631]:
+                          - generic [ref=e636]: 
+                          - text: 
+                - generic [ref=e637]:
+                  - generic [ref=e639]: 需要我演示一个简单的登录测试脚本吗？可以帮你快速验证Playwright的自动操作能力。
+                  - button "继续追问" [ref=e640]:
+                    - generic [ref=e642]: 继续追问
+              - generic [ref=e649] [cursor=pointer]:
+                - generic [ref=e650]: 展开剩余76%内容
+                - generic [ref=e651]: 
+          - generic [ref=e655]:
+            - heading "...reliable end-to-end testing for modern web apps | Playwright" [level=3] [ref=e658]:
+              - link "...reliable end-to-end testing for modern web apps | Playwright" [ref=e659] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=tXB6uE2fAt3Ccgh4E4obm-SvCMv1jHNdDVDKYv_GcGACJXint0QbAtqaVmDtxddr
+                - paragraph [ref=e662]:
+                  - generic [ref=e665]:
+                    - text: ...reliable end-to-end testing for modern web apps |
+                    - emphasis [ref=e666]: Playwright
+            - generic [ref=e667]:
+              - generic [ref=e668]: 查看此网页的中文翻译，请点击
+              - link "翻译此页" [ref=e669] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=B6dOL0Ytk9aVgUONIf-PA1NWF-PF8lYxARiasq-Xx-WRgr01gd2uig4IGIUZoYlyWi6i9o8yqZJ-V0CLpKGgem7WiljrYBRR7UwrDJ-QgynpNlqXb8irM4Do-1IIYu01h-Bn0Ms6ySFQTTxxD4Hplkxq3IWTIKQU_GP2xMlsvE7
+                - generic [ref=e670]: 翻译此页
+            - generic [ref=e676]:
+              - emphasis [ref=e677]: Playwright
+              - text: waits for elements to be actionable before performing actions. Assertions automatically retry until conditions are met. No artificial timeouts, no flaky tests. Test isolation Each test gets a fresh browser context — equivalent to a brand new browser profile. Full isolation with near-zero...
+            - link "Playwright官网" [ref=e682] [cursor=pointer]:
+              - /url: http://www.baidu.com/link?url=tXB6uE2fAt3Ccgh4E4obm-SvCMv1jHNdDVDKYv_GcGACJXint0QbAtqaVmDtxddr
+              - generic [ref=e683]: Playwright官网
+              - generic [ref=e685]: 
+          - generic [ref=e687]:
+            - heading "playwright(英语单词) - 百度百科" [level=3] [ref=e688]:
+              - link "playwright(英语单词) - 百度百科" [ref=e689] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=iaDiuKn27qZF7uxw2mfMd3ruLtNnOCHUsPZbzYo9vrs3qe_cjDG79perjmq7KUnfk_70nBqzhv9kJ-lmcgsQmq
+                - paragraph [ref=e692]:
+                  - generic [ref=e694]:
+                    - emphasis [ref=e695]: playwright
+                    - text: (英语单词) - 百度百科
+            - generic [ref=e699]:
+              - generic [ref=e705] [cursor=pointer]: 
+              - generic [ref=e707]:
+                - paragraph [ref=e711]:
+                  - generic [ref=e713]:
+                    - emphasis [ref=e714]: playwright
+                    - text: 是英语名词，指从事戏剧创作的剧作家，其美式发音为[ˈpleɪraɪt]，英式发音为[ˈpleɪˌraɪt]。该词特指撰写剧本的人。常见短语搭配包括Irish
+                    - emphasis [ref=e715]: Playwright
+                    - text: （爱尔兰剧作家）等。美国剧作家阿瑟·米勒在创作中提出“master-carpenters”隐喻以构建戏剧结构，其作品...
+                  - generic [ref=e717]:
+                    - link "详情" [ref=e718] [cursor=pointer]:
+                      - /url: http://www.baidu.com/link?url=iaDiuKn27qZF7uxw2mfMd3ruLtNnOCHUsPZbzYo9vrs3qe_cjDG79perjmq7KUnfk_70nBqzhv9kJ-lmcgsQmq
+                    - link "" [ref=e719] [cursor=pointer]:
+                      - /url: http://www.baidu.com/link?url=iaDiuKn27qZF7uxw2mfMd3ruLtNnOCHUsPZbzYo9vrs3qe_cjDG79perjmq7KUnfk_70nBqzhv9kJ-lmcgsQmq
+                      - generic [ref=e720]: 
+                - generic [ref=e723]:
+                  - link "单词用法" [ref=e725] [cursor=pointer]:
+                    - /url: http://www.baidu.com/link?url=rnYgWiB33s29q1xOjjrFXSTWNno-C5e5k14kQLH6ztHtl4TmtcMwSt9NNU6V9bwJq5PdnxfgSnhMT1raCGJYzjn5laA-zHEqxwRdqbeI3qe
+                    - generic [ref=e726]: 单词用法
+                  - link "短语搭配" [ref=e728] [cursor=pointer]:
+                    - /url: http://www.baidu.com/link?url=rnYgWiB33s29q1xOjjrFXSTWNno-C5e5k14kQLH6ztHtl4TmtcMwSt9NNU6V9bwJq5PdnxfgSnhMT1raCGJYzl0OyjAvoxmyuTHSdQElVDy
+                    - generic [ref=e729]: 短语搭配
+                  - link "双语例句" [ref=e731] [cursor=pointer]:
+                    - /url: http://www.baidu.com/link?url=rnYgWiB33s29q1xOjjrFXSTWNno-C5e5k14kQLH6ztHtl4TmtcMwSt9NNU6V9bwJq5PdnxfgSnhMT1raCGJYzofTdR1yfJlwbZ0p-V7_WPC
+                    - generic [ref=e732]: 双语例句
+            - generic [ref=e733]:
+              - link "百度百科" [ref=e736] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=iaDiuKn27qZF7uxw2mfMd3ruLtNnOCHUsPZbzYo9vrs3qe_cjDG79perjmq7KUnfk_70nBqzhv9kJ-lmcgsQmq
+                - generic [ref=e737]: 百度百科
+              - generic [ref=e739] [cursor=pointer]: 
+          - generic [ref=e741]:
+            - generic [ref=e742]: 大家还在搜
+            - generic [ref=e743]:
+              - link "playwright自动化工具" [ref=e744] [cursor=pointer]:
+                - /url: /s?rsv_idx=1&wd=playwright%E8%87%AA%E5%8A%A8%E5%8C%96%E5%B7%A5%E5%85%B7&fenlei=256&usm=3&ie=utf-8&rsv_pq=eb8b142600b954cd&oq=playwright&rsv_t=c9f6g4nZfpDamlHkUL0Nr7loDBUab3Zx0%2FT0zfYlf11JZZkHmvICj%2Fh2Xi4&rsf=101631101&rsv_dl=0_prs_28608_1
+                - generic [ref=e746]: playwright自动化工具
+              - link "反应力训练app" [ref=e747] [cursor=pointer]:
+                - /url: /s?rsv_idx=1&wd=%E5%8F%8D%E5%BA%94%E5%8A%9B%E8%AE%AD%E7%BB%83app&fenlei=256&usm=3&ie=utf-8&rsv_pq=eb8b142600b954cd&oq=playwright&rsv_t=c9f6g4nZfpDamlHkUL0Nr7loDBUab3Zx0%2FT0zfYlf11JZZkHmvICj%2Fh2Xi4&rsf=101634503&rsv_dl=0_prs_28608_2
+                - generic [ref=e749]: 反应力训练app
+              - link "playwright和selenium优缺点" [ref=e750] [cursor=pointer]:
+                - /url: /s?rsv_idx=1&wd=playwright%E5%92%8Cselenium%E4%BC%98%E7%BC%BA%E7%82%B9&fenlei=256&usm=3&ie=utf-8&rsv_pq=eb8b142600b954cd&oq=playwright&rsv_t=c9f6g4nZfpDamlHkUL0Nr7loDBUab3Zx0%2FT0zfYlf11JZZkHmvICj%2Fh2Xi4&rsf=101631101&rsv_dl=0_prs_28608_3
+                - generic [ref=e752]: playwright和selenium优缺点
+              - link "playwrite" [ref=e753] [cursor=pointer]:
+                - /url: /s?rsv_idx=1&wd=playwrite&fenlei=256&usm=3&ie=utf-8&rsv_pq=eb8b142600b954cd&oq=playwright&rsv_t=046cL65Qrq8oJk0rv%2B4dAyE57Jx311OmCj89YyPdYsw3DubLNHPXDJQA9ek&rsf=100631101&rsv_dl=0_prs_28608_4
+                - generic [ref=e755]: playwrite
+              - link "playwright python" [ref=e756] [cursor=pointer]:
+                - /url: /s?rsv_idx=1&wd=playwright%20python&fenlei=256&usm=3&ie=utf-8&rsv_pq=eb8b142600b954cd&oq=playwright&rsv_t=046cL65Qrq8oJk0rv%2B4dAyE57Jx311OmCj89YyPdYsw3DubLNHPXDJQA9ek&rsf=100633101&rsv_dl=0_prs_28608_5
+                - generic [ref=e758]: playwright python
+              - link "playwright-cli" [ref=e759] [cursor=pointer]:
+                - /url: /s?rsv_idx=1&wd=playwright-cli&fenlei=256&usm=3&ie=utf-8&rsv_pq=eb8b142600b954cd&oq=playwright&rsv_t=046cL65Qrq8oJk0rv%2B4dAyE57Jx311OmCj89YyPdYsw3DubLNHPXDJQA9ek&rsf=100631161&rsv_dl=0_prs_28608_6
+                - generic [ref=e761]: playwright-cli
+              - link "playwright和selenium对比" [ref=e762] [cursor=pointer]:
+                - /url: /s?rsv_idx=1&wd=playwright%E5%92%8Cselenium%E5%AF%B9%E6%AF%94&fenlei=256&usm=3&ie=utf-8&rsv_pq=eb8b142600b954cd&oq=playwright&rsv_t=046cL65Qrq8oJk0rv%2B4dAyE57Jx311OmCj89YyPdYsw3DubLNHPXDJQA9ek&rsf=100633101&rsv_dl=0_prs_28608_7
+                - generic [ref=e764]: playwright和selenium对比
+              - link "playright自动化" [ref=e765] [cursor=pointer]:
+                - /url: /s?rsv_idx=1&wd=playright%E8%87%AA%E5%8A%A8%E5%8C%96&fenlei=256&usm=3&ie=utf-8&rsv_pq=eb8b142600b954cd&oq=playwright&rsv_t=046cL65Qrq8oJk0rv%2B4dAyE57Jx311OmCj89YyPdYsw3DubLNHPXDJQA9ek&rsf=100631161&rsv_dl=0_prs_28608_8
+                - generic [ref=e767]: playright自动化
+          - generic [ref=e768]:
+            - heading "microsoft/playwright - GitHub" [level=3] [ref=e769]:
+              - link "microsoft/playwright - GitHub" [ref=e770] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=tXB6uE2fAt3Ccgh4E4obm-SvCMv1jHNdDVDKYv_GcGBeR2HgQY0d-5jbdsrFioH6exzo1hsX-iK7afuU3_7e1q
+                - text: microsoft/
+                - emphasis [ref=e771]: playwright
+                - text: "- GitHub"
+            - paragraph [ref=e772]:
+              - emphasis [ref=e773]: Playwright
+              - text: is a framework for Web Testing and Automation. It allows testing Chromium, Firefox and WebKit with a single API.
+            - generic [ref=e774]:
+              - generic [ref=e775]:
+                - generic [ref=e776]: 协议：
+                - generic [ref=e777]: Apache License 2.0
+              - generic [ref=e778]:
+                - generic [ref=e779]: 语言：
+                - generic [ref=e780]: TypeScript
+            - generic [ref=e781]:
+              - generic [ref=e782]:
+                - generic [ref=e783]: 最新版本：
+                - generic [ref=e784]: v1.22.2
+              - generic [ref=e785]:
+                - generic [ref=e786]: 官网：
+                - link "https://playwright.dev" [ref=e787] [cursor=pointer]:
+                  - /url: http://www.baidu.com/link?url=Z4wH-U6JsMGiQsP_kxHtcXgwkcvJ2rUoLHO1V1ceV5W
+            - link "Pull requests" [ref=e789] [cursor=pointer]:
+              - /url: http://www.baidu.com/link?url=8UdLxoW6rBBg5xt92RaWAj6918zgAxAmOE0YHVwjuu0paYJTs-MzphEaS9vorL1dxtv2eRKXBAEPugxWRJS-Wq
+            - link "Issues" [ref=e791] [cursor=pointer]:
+              - /url: http://www.baidu.com/link?url=sUP51hK6FTzSlRNZ-vBNLbvp7ygBuz_CwwAgTempev4j5mKx3cLZaB7UWBD9FIudK8Ky3LSfr5dXAr563_hBAK
+            - link "Releases" [ref=e793] [cursor=pointer]:
+              - /url: http://www.baidu.com/link?url=0McwLFgV21t2NjrlOnquAwX622xavO250fVqdHbA9hl8Y82tfLzb319Uq56wFQ9ZFlKA1FiGq7onWOSsq0BX-q
+            - generic [ref=e794]:
+              - link [ref=e795] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=tXB6uE2fAt3Ccgh4E4obm-SvCMv1jHNdDVDKYv_GcGBeR2HgQY0d-5jbdsrFioH6exzo1hsX-iK7afuU3_7e1q
+                - text: https://github.com/microsoft/playwright
+              - generic [ref=e797] [cursor=pointer]: 
+          - generic [ref=e801]:
+            - heading "什么是 Playwright? - Training | Microsoft Learn" [level=3] [ref=e804]:
+              - link "什么是 Playwright? - Training | Microsoft Learn" [ref=e805] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=l9OQXyJQpqO5ldeQVLWExNebA5Hyrq8kUdWxcqS2IDpgaXEL7iPlV8CU98rooejnVNZpaa6fljH5cHWDhVpQ4U_rJY-x9AU-y1ByLVxJJX4ISUtt77Pjz1s4AOJyGITp9sBqn3biQKsy3HeB-DF6ra
+                - paragraph [ref=e808]:
+                  - generic [ref=e811]:
+                    - text: 什么是
+                    - emphasis [ref=e812]: Playwright
+                    - text: "? - Training | Microsoft Learn"
+            - generic [ref=e813]:
+              - link [ref=e815] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=l9OQXyJQpqO5ldeQVLWExNebA5Hyrq8kUdWxcqS2IDpgaXEL7iPlV8CU98rooejnVNZpaa6fljH5cHWDhVpQ4U_rJY-x9AU-y1ByLVxJJX4ISUtt77Pjz1s4AOJyGITp9sBqn3biQKsy3HeB-DF6ra
+              - generic [ref=e820]:
+                - generic [ref=e827]:
+                  - text: "统一API :"
+                  - emphasis [ref=e828]: Playwright
+                  - text: 适用于所有新式浏览器引擎(Chromium、WebKit、Firefox),并支持移动覆盖范围的设备仿真。 它包括有头和无头浏览器选项,使开发人员能够在调试便利与 CI/云执行之间确定优先级。 弹性测试 :Playwright 实现了“自动等待”(无人工超时)和“自动重试”(Web 断言),从而消除了造成测试不稳定的关键原因。
+                - link "Microsoft" [ref=e833] [cursor=pointer]:
+                  - /url: http://www.baidu.com/link?url=l9OQXyJQpqO5ldeQVLWExNebA5Hyrq8kUdWxcqS2IDpgaXEL7iPlV8CU98rooejnVNZpaa6fljH5cHWDhVpQ4U_rJY-x9AU-y1ByLVxJJX4ISUtt77Pjz1s4AOJyGITp9sBqn3biQKsy3HeB-DF6ra
+                  - generic [ref=e834]: Microsoft
+                  - generic [ref=e836]: 
+          - generic [ref=e840]:
+            - heading "【Playwright系列】 一、了解 Playwright 的基础知识-CSDN博客" [level=3] [ref=e843]:
+              - link "【Playwright系列】 一、了解 Playwright 的基础知识-CSDN博客" [ref=e844] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=T_8304oKP3-WijRICMp26_VrlvseiYkrW6PZ8bswSOf9ocGXwn2ivdZAxZafr2MhRQJuhLjXt8JrxDmu5YPFtjslFjvPA6Rv4X8pnHQVED3
+                - paragraph [ref=e847]:
+                  - generic [ref=e850]:
+                    - text: 【
+                    - emphasis [ref=e851]: Playwright
+                    - text: 系列】 一、了解 Playwright 的基础知识-CSDN博客
+            - generic [ref=e856]:
+              - text: 2025年1月16日
+              - generic [ref=e857]:
+                - emphasis [ref=e858]: Playwright
+                - text: 支持多种浏览器,且功能更为全面。 Playwright 的Python支持 Playwright 提供了
+                - emphasis [ref=e859]: playwright
+                - text: "-python包,Python 开发者可以通过 pip 安装并使用 Playwright。 Playwright 的 Python API 设计简洁,与 JavaScript/TypeScript API 高度一致,文档丰富。 3. 学习资源 Playwright 官方文档(Python):https://playwright.dev/..."
+            - link "头像 CSDN博客" [ref=e864] [cursor=pointer]:
+              - /url: http://www.baidu.com/link?url=T_8304oKP3-WijRICMp26_VrlvseiYkrW6PZ8bswSOf9ocGXwn2ivdZAxZafr2MhRQJuhLjXt8JrxDmu5YPFtjslFjvPA6Rv4X8pnHQVED3
+              - img "头像" [ref=e867]
+              - generic [ref=e868]: CSDN博客
+              - generic [ref=e870]: 
+          - generic [ref=e874]:
+            - heading "Python-playwright:一款强大的UI自动化工具、新兴爬虫利器-CSDN博客" [level=3] [ref=e877]:
+              - link "Python-playwright:一款强大的UI自动化工具、新兴爬虫利器-CSDN博客" [ref=e878] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=T_8304oKP3-WijRICMp26_VrlvseiYkrW6PZ8bswSOeXS58sBHlGrEAb2moCFifwRT_i9mkvbd7QX41UiQXWpfqpyYcNC2gPW-5uW2_N6ri
+                - paragraph [ref=e881]:
+                  - generic [ref=e884]:
+                    - text: Python-
+                    - emphasis [ref=e885]: playwright
+                    - text: :一款强大的UI自动化工具、新兴爬虫利器-CSDN博客
+            - generic [ref=e886]:
+              - link [ref=e888] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=T_8304oKP3-WijRICMp26_VrlvseiYkrW6PZ8bswSOeXS58sBHlGrEAb2moCFifwRT_i9mkvbd7QX41UiQXWpfqpyYcNC2gPW-5uW2_N6ri
+              - generic [ref=e893]:
+                - generic [ref=e899]:
+                  - text: 2025年2月6日
+                  - generic [ref=e900]:
+                    - text: "1.2"
+                    - emphasis [ref=e901]: playwright
+                    - text: 安装与使用 playwright的安装(python3.7+) pip install playwright ...
+                - link "头像 CSDN博客" [ref=e906] [cursor=pointer]:
+                  - /url: http://www.baidu.com/link?url=T_8304oKP3-WijRICMp26_VrlvseiYkrW6PZ8bswSOeXS58sBHlGrEAb2moCFifwRT_i9mkvbd7QX41UiQXWpfqpyYcNC2gPW-5uW2_N6ri
+                  - img "头像" [ref=e909]
+                  - generic [ref=e910]: CSDN博客
+                  - generic [ref=e912]: 
+          - generic [ref=e916]:
+            - heading "Playwright 简介 | 菜鸟教程" [level=3] [ref=e919]:
+              - link "Playwright 简介 | 菜鸟教程" [ref=e920] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=tXB6uE2fAt3Ccgh4E4obm-SvCMv1jHNdDVDKYv_GcG42hmRMeVBC5KUp0BHyzoIWBgc2UlPVOosMYGvnd2BrM-EK_cpuCK7UBS4Gk1BtzNC
+                - paragraph [ref=e923]:
+                  - generic [ref=e926]:
+                    - emphasis [ref=e927]: Playwright
+                    - text: 简介 | 菜鸟教程
+            - generic [ref=e928]:
+              - link [ref=e930] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=tXB6uE2fAt3Ccgh4E4obm-SvCMv1jHNdDVDKYv_GcG42hmRMeVBC5KUp0BHyzoIWBgc2UlPVOosMYGvnd2BrM-EK_cpuCK7UBS4Gk1BtzNC
+              - generic [ref=e935]:
+                - generic [ref=e942]:
+                  - emphasis [ref=e943]: Playwright
+                  - text: 是微软开源的现代浏览器自动化框架,用少量代码就能在 Chromium(Chrome/Edge)、Firefox、WebKit(...
+                - link "www.runoob.com/playwrigh..." [ref=e948] [cursor=pointer]:
+                  - /url: http://www.baidu.com/link?url=tXB6uE2fAt3Ccgh4E4obm-SvCMv1jHNdDVDKYv_GcG42hmRMeVBC5KUp0BHyzoIWBgc2UlPVOosMYGvnd2BrM-EK_cpuCK7UBS4Gk1BtzNC
+                  - generic [ref=e949]: www.runoob.com/playwrigh...
+                  - generic [ref=e951]: 
+          - generic [ref=e955]:
+            - heading "Playwright有头模式Headed Mode(正常显示UI界面)与无头模式..." [level=3] [ref=e958]:
+              - link "Playwright有头模式Headed Mode(正常显示UI界面)与无头模式..." [ref=e959] [cursor=pointer]:
+                - /url: http://www.baidu.com/link?url=Z4wH-U6JsMGiQsP_kxHtcSpljvEsGTl97bQA9X7-jjdBsXzf-Ccm0mtczRH_7hmmCvl5DPjlmsUJhir3c30sCa
+                - paragraph [ref=e962]:
+                  - generic [ref=e965]:
+                    - emphasis [ref=e966]: Playwright
+                    - text: 有头模式Headed Mode(正常显示UI界面)与无头模式...
+            - generic [ref=e971]:
+              - text: 2026年4月7日
+              - generic [ref=e972]:
+                - text: 无头模式是指浏览器在后台运行,不显示任何图形界面。所有操作都在内存中完成,用户看不到浏览器窗口。这是
+                - emphasis [ref=e973]: Playwright
+                - text: "的默认模式。 使用场景 无头模式适用于: 持续集成(CI)环境:在Jenkins、GitLab CI、GitHub Actions等环境中运行 生产环境部署:在服务器上执行自动化任务 ..."
+            - link "dontla.blog.csdn.net/article/detai..." [ref=e978] [cursor=pointer]:
+              - /url: http://www.baidu.com/link?url=Z4wH-U6JsMGiQsP_kxHtcSpljvEsGTl97bQA9X7-jjdBsXzf-Ccm0mtczRH_7hmmCvl5DPjlmsUJhir3c30sCa
+              - generic [ref=e979]: dontla.blog.csdn.net/article/detai...
+              - generic [ref=e981]: 
+        - generic [ref=e984]:
+          - generic [ref=e985]: 相关搜索
+          - table [ref=e986]:
+            - rowgroup [ref=e987]:
+              - row "playwright自动化工具 playwright菜鸟教程" [ref=e988]:
+                - cell "playwright自动化工具" [ref=e989]:
+                  - link "playwright自动化工具" [ref=e990] [cursor=pointer]:
+                    - /url: /s?wd=playwright%E8%87%AA%E5%8A%A8%E5%8C%96%E5%B7%A5%E5%85%B7&rsf=133631101&rsp=0&f=1&rs_src=0&rsv_pq=eb8b142600b954cd&rsv_t=c8cdSn6qQxle%2FB7dvOZvpE1Qabi3D2wbWNcp514dV1%2Boz55WRp42XGRWkBA&rsv_dl=brs_28338_1
+                    - generic [ref=e992]: playwright自动化工具
+                - cell "playwright菜鸟教程" [ref=e993]:
+                  - link "playwright菜鸟教程" [ref=e994] [cursor=pointer]:
+                    - /url: /s?wd=playwright%E8%8F%9C%E9%B8%9F%E6%95%99%E7%A8%8B&rsf=133631101&rsp=1&f=1&rs_src=0&rsv_pq=eb8b142600b954cd&rsv_t=c8cdSn6qQxle%2FB7dvOZvpE1Qabi3D2wbWNcp514dV1%2Boz55WRp42XGRWkBA&rsv_dl=brs_28338_2
+                    - generic [ref=e996]: playwright菜鸟教程
+              - row "反应力训练app playwright和selenium优缺点" [ref=e997]:
+                - cell "反应力训练app" [ref=e998]:
+                  - link "反应力训练app" [ref=e999] [cursor=pointer]:
+                    - /url: /s?wd=%E5%8F%8D%E5%BA%94%E5%8A%9B%E8%AE%AD%E7%BB%83app&rsf=133634503&rsp=2&f=1&rs_src=0&rsv_pq=eb8b142600b954cd&rsv_t=c8cdSn6qQxle%2FB7dvOZvpE1Qabi3D2wbWNcp514dV1%2Boz55WRp42XGRWkBA&rsv_dl=brs_28338_3
+                    - generic [ref=e1001]: 反应力训练app
+                - cell "playwright和selenium优缺点" [ref=e1002]:
+                  - link "playwright和selenium优缺点" [ref=e1003] [cursor=pointer]:
+                    - /url: /s?wd=playwright%E5%92%8Cselenium%E4%BC%98%E7%BC%BA%E7%82%B9&rsf=133631101&rsp=3&f=1&rs_src=0&rsv_pq=eb8b142600b954cd&rsv_t=c8cdSn6qQxle%2FB7dvOZvpE1Qabi3D2wbWNcp514dV1%2Boz55WRp42XGRWkBA&rsv_dl=brs_28338_4
+                    - generic [ref=e1005]: playwright和selenium优缺点
+              - row "playwright python playwright-cli" [ref=e1006]:
+                - cell "playwright python" [ref=e1007]:
+                  - link "playwright python" [ref=e1008] [cursor=pointer]:
+                    - /url: /s?wd=playwright%20python&rsf=132633101&rsp=4&f=1&rs_src=0&rsv_pq=eb8b142600b954cd&rsv_t=c8cdSn6qQxle%2FB7dvOZvpE1Qabi3D2wbWNcp514dV1%2Boz55WRp42XGRWkBA&rsv_dl=brs_28338_5
+                    - generic [ref=e1010]: playwright python
+                - cell "playwright-cli" [ref=e1011]:
+                  - link "playwright-cli" [ref=e1012] [cursor=pointer]:
+                    - /url: /s?wd=playwright-cli&rsf=132631161&rsp=5&f=1&rs_src=0&rsv_pq=eb8b142600b954cd&rsv_t=c8cdSn6qQxle%2FB7dvOZvpE1Qabi3D2wbWNcp514dV1%2Boz55WRp42XGRWkBA&rsv_dl=brs_28338_6
+                    - generic [ref=e1014]: playwright-cli
+              - row "playright自动化 playwrite" [ref=e1015]:
+                - cell "playright自动化" [ref=e1016]:
+                  - link "playright自动化" [ref=e1017] [cursor=pointer]:
+                    - /url: /s?wd=playright%E8%87%AA%E5%8A%A8%E5%8C%96&rsf=132631161&rsp=6&f=1&rs_src=0&rsv_pq=eb8b142600b954cd&rsv_t=c8cdSn6qQxle%2FB7dvOZvpE1Qabi3D2wbWNcp514dV1%2Boz55WRp42XGRWkBA&rsv_dl=brs_28338_7
+                    - generic [ref=e1019]: playright自动化
+                - cell "playwrite" [ref=e1020]:
+                  - link "playwrite" [ref=e1021] [cursor=pointer]:
+                    - /url: /s?wd=playwrite&rsf=132631101&rsp=7&f=1&rs_src=0&rsv_pq=eb8b142600b954cd&rsv_t=c8cdSn6qQxle%2FB7dvOZvpE1Qabi3D2wbWNcp514dV1%2Boz55WRp42XGRWkBA&rsv_dl=brs_28338_8
+                    - generic [ref=e1023]: playwrite
+              - row "Playwright 浏览器 Playwright的安装" [ref=e1024]:
+                - cell "Playwright 浏览器" [ref=e1025]:
+                  - link "Playwright 浏览器" [ref=e1026] [cursor=pointer]:
+                    - /url: /s?wd=Playwright%20%E6%B5%8F%E8%A7%88%E5%99%A8&rsf=132631161&rsp=8&f=1&rs_src=0&rsv_pq=eb8b142600b954cd&rsv_t=c8cdSn6qQxle%2FB7dvOZvpE1Qabi3D2wbWNcp514dV1%2Boz55WRp42XGRWkBA&rsv_dl=brs_28338_9
+                    - generic [ref=e1028]: Playwright 浏览器
+                - cell "Playwright的安装" [ref=e1029]:
+                  - link "Playwright的安装" [ref=e1030] [cursor=pointer]:
+                    - /url: /s?wd=Playwright%E7%9A%84%E5%AE%89%E8%A3%85&rsf=132633301&rsp=9&f=1&rs_src=0&rsv_pq=eb8b142600b954cd&rsv_t=c8cdSn6qQxle%2FB7dvOZvpE1Qabi3D2wbWNcp514dV1%2Boz55WRp42XGRWkBA&rsv_dl=brs_28338_10
+                    - generic [ref=e1032]: Playwright的安装
+      - generic [ref=e1035]:
+        - link:
+          - /url: ""
+          - img
+        - strong [ref=e1036]:
+          - generic [ref=e1037]: "1"
+        - link "2" [ref=e1038] [cursor=pointer]:
+          - /url: /s?wd=playwright&pn=10&oq=playwright&ie=utf-8&usm=3&fenlei=256&rsv_idx=1&rsv_pq=eb8b142600b954cd&rsv_t=c8cdSn6qQxle%2FB7dvOZvpE1Qabi3D2wbWNcp514dV1%2Boz55WRp42XGRWkBA&topic_pn=
+          - generic [ref=e1039]: "2"
+        - link "3" [ref=e1040] [cursor=pointer]:
+          - /url: /s?wd=playwright&pn=20&oq=playwright&ie=utf-8&usm=3&fenlei=256&rsv_idx=1&rsv_pq=eb8b142600b954cd&rsv_t=c8cdSn6qQxle%2FB7dvOZvpE1Qabi3D2wbWNcp514dV1%2Boz55WRp42XGRWkBA&topic_pn=
+          - generic [ref=e1041]: "3"
+        - link "4" [ref=e1042] [cursor=pointer]:
+          - /url: /s?wd=playwright&pn=30&oq=playwright&ie=utf-8&usm=3&fenlei=256&rsv_idx=1&rsv_pq=eb8b142600b954cd&rsv_t=c8cdSn6qQxle%2FB7dvOZvpE1Qabi3D2wbWNcp514dV1%2Boz55WRp42XGRWkBA&topic_pn=
+          - generic [ref=e1043]: "4"
+        - link "5" [ref=e1044] [cursor=pointer]:
+          - /url: /s?wd=playwright&pn=40&oq=playwright&ie=utf-8&usm=3&fenlei=256&rsv_idx=1&rsv_pq=eb8b142600b954cd&rsv_t=c8cdSn6qQxle%2FB7dvOZvpE1Qabi3D2wbWNcp514dV1%2Boz55WRp42XGRWkBA&topic_pn=
+          - generic [ref=e1045]: "5"
+        - link "6" [ref=e1046] [cursor=pointer]:
+          - /url: /s?wd=playwright&pn=50&oq=playwright&ie=utf-8&usm=3&fenlei=256&rsv_idx=1&rsv_pq=eb8b142600b954cd&rsv_t=c8cdSn6qQxle%2FB7dvOZvpE1Qabi3D2wbWNcp514dV1%2Boz55WRp42XGRWkBA&topic_pn=
+          - generic [ref=e1047]: "6"
+        - link "7" [ref=e1048] [cursor=pointer]:
+          - /url: /s?wd=playwright&pn=60&oq=playwright&ie=utf-8&usm=3&fenlei=256&rsv_idx=1&rsv_pq=eb8b142600b954cd&rsv_t=c8cdSn6qQxle%2FB7dvOZvpE1Qabi3D2wbWNcp514dV1%2Boz55WRp42XGRWkBA&topic_pn=
+          - generic [ref=e1049]: "7"
+        - link "8" [ref=e1050] [cursor=pointer]:
+          - /url: /s?wd=playwright&pn=70&oq=playwright&ie=utf-8&usm=3&fenlei=256&rsv_idx=1&rsv_pq=eb8b142600b954cd&rsv_t=c8cdSn6qQxle%2FB7dvOZvpE1Qabi3D2wbWNcp514dV1%2Boz55WRp42XGRWkBA&topic_pn=
+          - generic [ref=e1051]: "8"
+        - link "9" [ref=e1052] [cursor=pointer]:
+          - /url: /s?wd=playwright&pn=80&oq=playwright&ie=utf-8&usm=3&fenlei=256&rsv_idx=1&rsv_pq=eb8b142600b954cd&rsv_t=c8cdSn6qQxle%2FB7dvOZvpE1Qabi3D2wbWNcp514dV1%2Boz55WRp42XGRWkBA&topic_pn=
+          - generic [ref=e1053]: "9"
+        - link "10" [ref=e1054] [cursor=pointer]:
+          - /url: /s?wd=playwright&pn=90&oq=playwright&ie=utf-8&usm=3&fenlei=256&rsv_idx=1&rsv_pq=eb8b142600b954cd&rsv_t=c8cdSn6qQxle%2FB7dvOZvpE1Qabi3D2wbWNcp514dV1%2Boz55WRp42XGRWkBA&topic_pn=
+          - generic [ref=e1055]: "10"
+        - link [ref=e1056] [cursor=pointer]:
+          - /url: /s?wd=playwright&pn=10&oq=playwright&ie=utf-8&usm=3&fenlei=256&rsv_idx=1&rsv_pq=eb8b142600b954cd&rsv_t=c8cdSn6qQxle%2FB7dvOZvpE1Qabi3D2wbWNcp514dV1%2Boz55WRp42XGRWkBA&topic_pn=&rsv_page=1
+          - img [ref=e1057]
+      - generic [ref=e1061]:
+        - link "帮助" [ref=e1062] [cursor=pointer]:
+          - /url: https://help.baidu.com/question?prod_id=1
+        - link "举报" [ref=e1063] [cursor=pointer]:
+          - /url: https://help.baidu.com/jubao?source=search
+        - link "用户反馈" [ref=e1064] [cursor=pointer]:
+          - /url: javascript:;
+        - link "企业推广" [ref=e1065] [cursor=pointer]:
+          - /url: https://e.baidu.com/lp/search/?refer=1298

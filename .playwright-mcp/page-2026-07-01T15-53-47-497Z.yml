@@ -1,0 +1,122 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - generic:
+      - generic [ref=e6]:
+        - link "新闻" [ref=e7] [cursor=pointer]:
+          - /url: http://news.baidu.com
+        - link "hao123" [ref=e8] [cursor=pointer]:
+          - /url: https://www.hao123.com?src=from_pc
+        - link "地图" [ref=e9] [cursor=pointer]:
+          - /url: http://map.baidu.com
+        - link "贴吧" [ref=e10] [cursor=pointer]:
+          - /url: http://tieba.baidu.com/
+        - link "视频" [ref=e11] [cursor=pointer]:
+          - /url: https://haokan.baidu.com/?sfrom=baidu-top
+        - link "图片" [ref=e12] [cursor=pointer]:
+          - /url: http://image.baidu.com/
+        - link "网盘" [ref=e13] [cursor=pointer]:
+          - /url: https://pan.baidu.com?from=1026962h
+        - link "文库" [ref=e14] [cursor=pointer]:
+          - /url: https://wenku.baidu.com/?fr=bdpcindex
+        - link "文心" [ref=e15] [cursor=pointer]:
+          - /url: https://chat.baidu.com/search?isShowHello=1&pd=csaitab&setype=csaitab&extParamsJson=%7B%22enter_type%22%3A%22home_tab%22%7D
+        - link "搭子DuMate" [ref=e16] [cursor=pointer]:
+          - /url: https://dumate.cn?track=bdsy
+        - link "更多" [ref=e18] [cursor=pointer]:
+          - /url: http://www.baidu.com/more/
+      - generic [ref=e19]:
+        - generic [ref=e20] [cursor=pointer]: 设置
+        - link "登录" [ref=e21] [cursor=pointer]:
+          - /url: https://passport.baidu.com/v2/?login&tpl=mn&u=http%3A%2F%2Fwww.baidu.com%2F&sms=5
+    - generic [ref=e24]:
+      - generic [ref=e25]:
+        - img [ref=e26]
+        - generic:
+          - link "点击一下，了解更多":
+            - /url: //www.baidu.com/s?wd=%E7%99%BE%E5%BA%A6%E7%83%AD%E6%90%9C&sa=ire_dl_gh_logo_texing&rsv_dl=igh_logo_pcs
+      - generic [ref=e31]:
+        - generic [ref=e34]:
+          - textbox "Angelababy白纸签名引热议" [active] [ref=e36]
+          - generic [ref=e38]:
+            - generic [ref=e39]:
+              - img [ref=e47] [cursor=pointer]
+              - generic [ref=e50]:
+                - img [ref=e54] [cursor=pointer]
+                - img [ref=e59] [cursor=pointer]
+            - button "百度一下" [ref=e63] [cursor=pointer]
+        - link "复杂问题就找文心助手，深入思考回答更优 " [ref=e67] [cursor=pointer]:
+          - /url: https://chat.baidu.com/search?extParams=%7B%22enter_type%22%3A%22home_operate%22%7D&isShowHello=1
+          - img [ref=e68]
+          - generic [ref=e69]:
+            - generic [ref=e70]: 复杂问题就找文心助手，深入思考回答更优
+            - generic [ref=e71]: 
+      - generic [ref=e74]:
+        - generic [ref=e75]:
+          - link "百度热搜":
+            - /url: https://top.baidu.com/board?platform=pc&sa=pcindex_entry
+            - generic "百度热搜" [ref=e76] [cursor=pointer]: 
+          - generic [ref=e77] [cursor=pointer]:
+            - generic [ref=e78]: 
+            - text: 换一换
+        - list:
+          - listitem [ref=e79]:
+            - link " 习近平向全体党员致以节日的问候" [ref=e80] [cursor=pointer]:
+              - /url: https://www.baidu.com/s?wd=%E4%B9%A0%E8%BF%91%E5%B9%B3%E5%90%91%E5%85%A8%E4%BD%93%E5%85%9A%E5%91%98%E8%87%B4%E4%BB%A5%E8%8A%82%E6%97%A5%E7%9A%84%E9%97%AE%E5%80%99&sa=fyb_n_homepage&rsv_dl=fyb_n_homepage&from=super&cl=3&tn=baidutop10&fr=top1000&rsv_idx=2&hisfilter=1
+              - generic [ref=e81]: 
+              - text: 习近平向全体党员致以节日的问候
+          - listitem [ref=e83]:
+            - link "5 世界杯：英格兰vs刚果金" [ref=e84] [cursor=pointer]:
+              - /url: https://www.baidu.com/s?wd=%E4%B8%96%E7%95%8C%E6%9D%AF%EF%BC%9A%E8%8B%B1%E6%A0%BC%E5%85%B0vs%E5%88%9A%E6%9E%9C%E9%87%91&sa=fyb_n_homepage&rsv_dl=fyb_n_homepage&from=super&cl=3&tn=baidutop10&fr=top1000&rsv_idx=2&hisfilter=1
+              - generic [ref=e85]: "5"
+              - text: 世界杯：英格兰vs刚果金
+          - listitem [ref=e87]:
+            - link "1 “老马”获党内最高荣誉 网友刷屏" [ref=e88] [cursor=pointer]:
+              - /url: https://www.baidu.com/s?wd=%E2%80%9C%E8%80%81%E9%A9%AC%E2%80%9D%E8%8E%B7%E5%85%9A%E5%86%85%E6%9C%80%E9%AB%98%E8%8D%A3%E8%AA%89+%E7%BD%91%E5%8F%8B%E5%88%B7%E5%B1%8F&sa=fyb_n_homepage&rsv_dl=fyb_n_homepage&from=super&cl=3&tn=baidutop10&fr=top1000&rsv_idx=2&hisfilter=1
+              - generic [ref=e89]: "1"
+              - text: “老马”获党内最高荣誉 网友刷屏
+            - generic [ref=e90]: 热
+          - listitem [ref=e91]:
+            - link "6 电动汽车“最严国标”来了" [ref=e92] [cursor=pointer]:
+              - /url: https://www.baidu.com/s?wd=%E7%94%B5%E5%8A%A8%E6%B1%BD%E8%BD%A6%E2%80%9C%E6%9C%80%E4%B8%A5%E5%9B%BD%E6%A0%87%E2%80%9D%E6%9D%A5%E4%BA%86&sa=fyb_n_homepage&rsv_dl=fyb_n_homepage&from=super&cl=3&tn=baidutop10&fr=top1000&rsv_idx=2&hisfilter=1
+              - generic [ref=e93]: "6"
+              - text: 电动汽车“最严国标”来了
+            - generic [ref=e94]: 热
+          - listitem [ref=e95]:
+            - link "2 A股交易新规下周一正式施行" [ref=e96] [cursor=pointer]:
+              - /url: https://www.baidu.com/s?wd=A%E8%82%A1%E4%BA%A4%E6%98%93%E6%96%B0%E8%A7%84%E4%B8%8B%E5%91%A8%E4%B8%80%E6%AD%A3%E5%BC%8F%E6%96%BD%E8%A1%8C&sa=fyb_n_homepage&rsv_dl=fyb_n_homepage&from=super&cl=3&tn=baidutop10&fr=top1000&rsv_idx=2&hisfilter=1
+              - generic [ref=e97]: "2"
+              - text: A股交易新规下周一正式施行
+            - generic [ref=e98]: 热
+          - listitem [ref=e99]:
+            - link "7 初中生沉迷折纸近十年作品惊艳网友" [ref=e100] [cursor=pointer]:
+              - /url: https://www.baidu.com/s?wd=%E5%88%9D%E4%B8%AD%E7%94%9F%E6%B2%89%E8%BF%B7%E6%8A%98%E7%BA%B8%E8%BF%91%E5%8D%81%E5%B9%B4%E4%BD%9C%E5%93%81%E6%83%8A%E8%89%B3%E7%BD%91%E5%8F%8B&sa=fyb_n_homepage&rsv_dl=fyb_n_homepage&from=super&cl=3&tn=baidutop10&fr=top1000&rsv_idx=2&hisfilter=1
+              - generic [ref=e101]: "7"
+              - text: 初中生沉迷折纸近十年作品惊艳网友
+          - listitem [ref=e103]:
+            - link "3 初心不改 用一生践行誓言" [ref=e104] [cursor=pointer]:
+              - /url: https://www.baidu.com/s?wd=%E5%88%9D%E5%BF%83%E4%B8%8D%E6%94%B9+%E7%94%A8%E4%B8%80%E7%94%9F%E8%B7%B5%E8%A1%8C%E8%AA%93%E8%A8%80&sa=fyb_n_homepage&rsv_dl=fyb_n_homepage&from=super&cl=3&tn=baidutop10&fr=top1000&rsv_idx=2&hisfilter=1
+              - generic [ref=e105]: "3"
+              - text: 初心不改 用一生践行誓言
+          - listitem [ref=e107]:
+            - link "8 双方上一秒还在争吵 下一秒互相道歉" [ref=e108] [cursor=pointer]:
+              - /url: https://www.baidu.com/s?wd=%E5%8F%8C%E6%96%B9%E4%B8%8A%E4%B8%80%E7%A7%92%E8%BF%98%E5%9C%A8%E4%BA%89%E5%90%B5+%E4%B8%8B%E4%B8%80%E7%A7%92%E4%BA%92%E7%9B%B8%E9%81%93%E6%AD%89&sa=fyb_n_homepage&rsv_dl=fyb_n_homepage&from=super&cl=3&tn=baidutop10&fr=top1000&rsv_idx=2&hisfilter=1
+              - generic [ref=e109]: "8"
+              - text: 双方上一秒还在争吵 下一秒互相道歉
+            - generic [ref=e110]: 新
+          - listitem [ref=e111]:
+            - link "4 微信转账误转他人 法院判了" [ref=e112] [cursor=pointer]:
+              - /url: https://www.baidu.com/s?wd=%E5%BE%AE%E4%BF%A1%E8%BD%AC%E8%B4%A6%E8%AF%AF%E8%BD%AC%E4%BB%96%E4%BA%BA+%E6%B3%95%E9%99%A2%E5%88%A4%E4%BA%86&sa=fyb_n_homepage&rsv_dl=fyb_n_homepage&from=super&cl=3&tn=baidutop10&fr=top1000&rsv_idx=2&hisfilter=1
+              - generic [ref=e113]: "4"
+              - text: 微信转账误转他人 法院判了
+            - generic [ref=e114]: 热
+          - listitem [ref=e115]:
+            - link "9 太空挂上了香港特区区旗" [ref=e116] [cursor=pointer]:
+              - /url: https://www.baidu.com/s?wd=%E5%A4%AA%E7%A9%BA%E6%8C%82%E4%B8%8A%E4%BA%86%E9%A6%99%E6%B8%AF%E7%89%B9%E5%8C%BA%E5%8C%BA%E6%97%97&sa=fyb_n_homepage&rsv_dl=fyb_n_homepage&from=super&cl=3&tn=baidutop10&fr=top1000&rsv_idx=2&hisfilter=1
+              - generic [ref=e117]: "9"
+              - text: 太空挂上了香港特区区旗
+  - generic [ref=e119]:
+    - generic:
+      - generic:
+        - generic:
+          - img
+    - img [ref=e124] [cursor=pointer]

@@ -1,0 +1,16 @@
+- generic [ref=f8e3]:
+  - paragraph [ref=f8e5]: 百度安全验证
+  - generic [ref=f8e8]:
+    - generic [ref=f8e9]: 请完成下方验证后继续操作
+    - paragraph
+    - generic [ref=f8e10]:
+      - generic [ref=f8e11]:
+        - img [ref=f8e12]
+        - generic [ref=f8e14]: 图片由AI生成
+      - paragraph [ref=f8e17]: 拖动左侧滑块使图片为正
+  - paragraph [ref=f8e20]:
+    - link "意见反馈" [ref=f8e21] [cursor=pointer]:
+      - /url: https://www.baidu.com/passport/ufosubmit.html?type=new
+    - generic [ref=f8e22] [cursor=pointer]:
+      - text: "|"
+      - text: 刷新
