@@ -1,18 +1,63 @@
 import { NextRequest, NextResponse } from 'next/server';
-import OpenAI from "openai";
 import type {
   ChatCompletionMessageParam,
   ChatCompletionTool,
 } from "openai/resources/chat/completions";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { getLLMClient } from "../../llm/llmClient";
+import { exec } from 'child_process';
+import { promisify } from 'util';
 
-// =============================================
-// 优化点1: 全局单例 - 复用 Playwright MCP Client
-// =============================================
+const execAsync = promisify(exec);
+
 let mcpClientInstance: Client | null = null;
+let mcpTransportInstance: StdioClientTransport | null = null;
 let toolsCache: ChatCompletionTool[] | null = null;
-let openaiClient: OpenAI | null = null;
+
+async function killProcessTree(pid: number): Promise<void> {
+  try {
+    if (process.platform === 'win32') {
+      await execAsync(`taskkill /PID ${pid} /T /F`);
+    } else {
+      await execAsync(`kill -9 -${pid}`);
+    }
+  } catch (e) {
+    // 进程可能已经退出，忽略错误
+  }
+}
+
+async function cleanupMCPClient(): Promise<void> {
+  if (mcpClientInstance) {
+    try {
+      await mcpClientInstance.close();
+      console.log("🔌 Playwright MCP Client 已关闭");
+    } catch (e) {
+      console.error("关闭 MCP Client 时出错:", e);
+    }
+    mcpClientInstance = null;
+  }
+
+  if (mcpTransportInstance) {
+    const transport = mcpTransportInstance as StdioClientTransport & { pid?: number };
+    if (transport.pid) {
+      console.log(`🔪 杀掉 Playwright 进程树: PID ${transport.pid}`);
+      await killProcessTree(transport.pid);
+    }
+    mcpTransportInstance = null;
+  }
+
+  toolsCache = null;
+}
+
+process.on('exit', () => {
+  cleanupMCPClient().catch(console.error);
+});
+
+process.on('SIGINT', () => {
+  cleanupMCPClient().catch(console.error);
+  process.exit(0);
+});
 
 async function getMCPClient(): Promise<Client> {
   if (mcpClientInstance) {
@@ -20,8 +65,7 @@ async function getMCPClient(): Promise<Client> {
       await mcpClientInstance.listTools();
       return mcpClientInstance;
     } catch {
-      mcpClientInstance = null;
-      toolsCache = null;
+      await cleanupMCPClient();
     }
   }
 
@@ -43,6 +87,7 @@ async function getMCPClient(): Promise<Client> {
   await client.connect(transport);
   console.log("✅ Playwright MCP Server 连接成功");
   mcpClientInstance = client;
+  mcpTransportInstance = transport;
 
   return client;
 }
@@ -64,17 +109,6 @@ async function getTools(): Promise<ChatCompletionTool[]> {
 
   console.log(`🧰 可用工具 (${toolsCache.length}个):`, toolsCache.map((t) => t.function.name).join(", "));
   return toolsCache;
-}
-
-function getOpenAIClient(): OpenAI {
-  if (openaiClient) return openaiClient;
-
-  openaiClient = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-    baseURL: process.env.OPENAI_API_BASE_URL,
-  });
-
-  return openaiClient;
 }
 
 // =============================================
@@ -100,14 +134,8 @@ const SYSTEM_PROMPT = `你是一个专业的 Web 自动化测试 Agent。
 function trimMessages(messages: ChatCompletionMessageParam[], maxMessages: number = 10): ChatCompletionMessageParam[] {
   if (messages.length <= maxMessages) return messages;
   
-  const systemMsg = messages.find(m => m.role === 'system');
-  const recentMessages = messages.slice(-maxMessages);
-  
-  if (systemMsg && recentMessages[0]?.role !== 'system') {
-    return [systemMsg, ...recentMessages];
-  }
-  
-  return recentMessages;
+  // 保留最近的消息
+  return messages.slice(-maxMessages);
 }
 
 // =============================================
@@ -122,7 +150,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "缺少测试任务输入" }, { status: 400 });
     }
 
-    // 检查缓存
     if (testResultCache.has(input)) {
       console.log("📋 命中缓存");
       return NextResponse.json({ 
@@ -136,6 +163,14 @@ export async function POST(req: NextRequest) {
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
+        const abortHandler = () => {
+          console.log("⚠️ 请求被中断，清理 MCP Client");
+          cleanupMCPClient().catch(console.error);
+          controller.error(new Error("Request aborted"));
+        };
+
+        req.signal.addEventListener('abort', abortHandler);
+
         try {
           await runTestAgentWithStream(input, (data: string) => {
             controller.enqueue(encoder.encode(`data: ${data}\n\n`));
@@ -143,7 +178,13 @@ export async function POST(req: NextRequest) {
           controller.close();
         } catch (error) {
           controller.error(error);
+        } finally {
+          req.signal.removeEventListener('abort', abortHandler);
         }
+      },
+      cancel() {
+        console.log("⚠️ Stream 被取消，清理 MCP Client");
+        cleanupMCPClient().catch(console.error);
       },
     });
 
@@ -169,103 +210,100 @@ async function runTestAgentWithStream(
 ): Promise<void> {
   const mcpClient = await getMCPClient();
   const tools = await getTools();
-  const openai = getOpenAIClient();
+  const llmClient = getLLMClient();
 
   const messages: ChatCompletionMessageParam[] = [
-    {
-      role: "system",
-      content: `${SYSTEM_PROMPT}\n当前测试任务：${testTask}`,
-    },
+    { role: 'user', content: testTask }
   ];
 
   const MAX_STEPS = 10;
 
-  for (let step = 0; step < MAX_STEPS; step++) {
-    onProgress(JSON.stringify({ step: step + 1, status: "thinking" }));
+  try {
+    for (let step = 0; step < MAX_STEPS; step++) {
+      onProgress(JSON.stringify({ step: step + 1, status: "thinking" }));
 
-    const trimmedMessages = trimMessages(messages, 10);
+      const trimmedMessages = trimMessages(messages, 10);
 
-    const response = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || "qwen-turbo",
-      messages: trimmedMessages,
-      tools,
-      tool_choice: "auto",
-      temperature: 0.3,
-    });
+      const assistantMessage = await llmClient.chatWithTool(
+        SYSTEM_PROMPT,
+        trimmedMessages,
+        tools,
+      );
 
-    const choice = response.choices[0];
-    const assistantMessage = choice.message;
+      messages.push({
+        role: "assistant",
+        content: assistantMessage.content,
+        tool_calls: assistantMessage.tool_calls,
+      });
 
-    messages.push({
-      role: "assistant",
-      content: assistantMessage.content,
-      tool_calls: assistantMessage.tool_calls,
-    });
+      if (!assistantMessage.tool_calls || assistantMessage.tool_calls.length === 0) {
+        const result = assistantMessage.content || "测试完成";
+        onProgress(JSON.stringify({ step: step + 1, status: "completed", result }));
 
-    if (!assistantMessage.tool_calls || assistantMessage.tool_calls.length === 0) {
-      const result = assistantMessage.content || "测试完成";
-      onProgress(JSON.stringify({ step: step + 1, status: "completed", result }));
+        if (testResultCache.size >= MAX_CACHE_SIZE) {
+          const firstKey = testResultCache.keys().next().value;
+          if (firstKey !== undefined) {
+            testResultCache.delete(firstKey);
+          }
+        }
+        testResultCache.set(testTask, result);
+        return;
+      }
 
-      if (testResultCache.size >= MAX_CACHE_SIZE) {
-        const firstKey = testResultCache.keys().next().value;
-        if (firstKey !== undefined) {
-          testResultCache.delete(firstKey);
+      for (const toolCall of assistantMessage.tool_calls) {
+        const toolName = toolCall.function.name;
+        const toolArgs = JSON.parse(toolCall.function.arguments);
+
+        onProgress(JSON.stringify({ step: step + 1, status: "executing", tool: toolName }));
+
+        try {
+          // 添加超时机制，防止工具调用卡住
+          const timeoutPromise = new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error(`工具调用超时: ${toolName}`)), 30000);
+          });
+
+          const result = await Promise.race([
+            mcpClient.callTool({
+              name: toolName,
+              arguments: toolArgs,
+            }),
+            timeoutPromise,
+          ]);
+
+          const toolResultText =
+            typeof result.content === "string"
+              ? result.content
+              : JSON.stringify(result.content);
+
+          messages.push({
+            role: "tool",
+            tool_call_id: toolCall.id,
+            content: toolResultText,
+          });
+
+          onProgress(JSON.stringify({ 
+            step: step + 1, 
+            status: "tool_result", 
+            tool: toolName,
+            result: toolResultText.slice(0, 500)
+          }));
+
+        } catch (error) {
+          const errorMsg = `工具调用失败: ${error instanceof Error ? error.message : "unknown"}`;
+
+          messages.push({
+            role: "tool",
+            tool_call_id: toolCall.id,
+            content: errorMsg,
+          });
+
+          onProgress(JSON.stringify({ step: step + 1, status: "error", error: errorMsg }));
         }
       }
-      testResultCache.set(testTask, result);
-
-      await mcpClient.close();
-      mcpClientInstance = null;
-      toolsCache = null;
-      return;
     }
 
-    for (const toolCall of assistantMessage.tool_calls) {
-      const toolName = toolCall.function.name;
-      const toolArgs = JSON.parse(toolCall.function.arguments);
-
-      onProgress(JSON.stringify({ step: step + 1, status: "executing", tool: toolName }));
-
-      try {
-        const result = await mcpClient.callTool({
-          name: toolName,
-          arguments: toolArgs,
-        });
-
-        const toolResultText =
-          typeof result.content === "string"
-            ? result.content
-            : JSON.stringify(result.content);
-
-        messages.push({
-          role: "tool",
-          tool_call_id: toolCall.id,
-          content: toolResultText,
-        });
-
-        onProgress(JSON.stringify({ 
-          step: step + 1, 
-          status: "tool_result", 
-          tool: toolName,
-          result: toolResultText.slice(0, 500)
-        }));
-
-      } catch (error) {
-        const errorMsg = `工具调用失败: ${error instanceof Error ? error.message : "unknown"}`;
-
-        messages.push({
-          role: "tool",
-          tool_call_id: toolCall.id,
-          content: errorMsg,
-        });
-
-        onProgress(JSON.stringify({ step: step + 1, status: "error", error: errorMsg }));
-      }
-    }
+    onProgress(JSON.stringify({ step: MAX_STEPS, status: "completed", result: "达到最大步数限制，测试结束" }));
+  } finally {
+    await cleanupMCPClient();
   }
-
-  onProgress(JSON.stringify({ step: MAX_STEPS, status: "completed", result: "达到最大步数限制，测试结束" }));
-  await mcpClient.close();
-  mcpClientInstance = null;
-  toolsCache = null;
 }
