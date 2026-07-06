@@ -1,7 +1,7 @@
 "use client";
 
 import { Input, Button, Spin, Alert, Timeline } from 'antd';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 
 interface ProgressStep {
   step: number;
@@ -9,6 +9,8 @@ interface ProgressStep {
   tool?: string;
   result?: string;
   error?: string;
+  message?: string;
+  taskId?: string;
 }
 
 export default function Home() {
@@ -18,9 +20,65 @@ export default function Home() {
   const [progress, setProgress] = useState<ProgressStep[]>([]);
   const [error, setError] = useState('');
   const [finalResult, setFinalResult] = useState('');
+  const [isPaused, setIsPaused] = useState(false);
+  const [isResuming, setIsResuming] = useState(false);
+  const currentTaskIdRef = useRef('');
+  const streamReaderRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInputValue(e.target.value);
+  };
+
+  const processSSEStream = async (reader: ReadableStreamDefaultReader<Uint8Array>) => {
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(line.substring(6));
+
+            if (data.cached) {
+              setFinalResult(data.output);
+              setProgress([{ step: 1, status: 'completed', result: '命中缓存' }]);
+              setIsLoading(false);
+              return;
+            }
+
+            if (data.taskId) {
+              currentTaskIdRef.current = data.taskId;
+            }
+
+            setProgress(prev => [...prev, data]);
+
+            if (data.status === 'login_required') {
+              setIsPaused(true);
+            } else if (data.status === 'resumed') {
+              setIsPaused(false);
+            } else if (data.status === 'completed') {
+              setFinalResult(data.result);
+              setIsLoading(false);
+              return;
+            } else if (data.status === 'error') {
+              setError(data.error);
+            }
+          } catch (parseError) {
+            console.error('Failed to parse SSE data:', parseError);
+          }
+        }
+      }
+    }
+
+    setIsLoading(false);
+    setIsPaused(false);
   };
 
   const handleSubmit = async () => {
@@ -30,6 +88,8 @@ export default function Home() {
     setProgress([]);
     setError('');
     setFinalResult('');
+    setIsPaused(false);
+    currentTaskIdRef.current = '';
 
     try {
       const response = await fetch('/api/chat', {
@@ -55,47 +115,47 @@ export default function Home() {
         throw new Error('No response body');
       }
 
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.substring(6));
-              
-              if (data.cached) {
-                setFinalResult(data.output);
-                setProgress([{ step: 1, status: 'completed', result: '命中缓存' }]);
-                setIsLoading(false);
-                return;
-              }
-
-              setProgress(prev => [...prev, data]);
-
-              if (data.status === 'completed') {
-                setFinalResult(data.result);
-              } else if (data.status === 'error') {
-                setError(data.error);
-              }
-            } catch (parseError) {
-              console.error('Failed to parse SSE data:', parseError);
-            }
-          }
-        }
-      }
-
-      setIsLoading(false);
+      streamReaderRef.current = reader;
+      await processSSEStream(reader);
+      streamReaderRef.current = null;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
       setIsLoading(false);
+      setIsPaused(false);
+    }
+  };
+
+  const handleResume = async () => {
+    if (!currentTaskIdRef.current) return;
+
+    setIsResuming(true);
+    setError('');
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'resume',
+          taskId: currentTaskIdRef.current,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || '恢复失败');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '恢复失败');
+    } finally {
+      setIsResuming(false);
     }
   };
 
@@ -107,6 +167,10 @@ export default function Home() {
         return { icon: '⚙️', label: '执行中' };
       case 'tool_result':
         return { icon: '✅', label: '完成' };
+      case 'login_required':
+        return { icon: '🔐', label: '等待登录' };
+      case 'resumed':
+        return { icon: '▶️', label: '已恢复' };
       case 'completed':
         return { icon: '🏁', label: '任务完成' };
       case 'error':
@@ -119,17 +183,17 @@ export default function Home() {
   return (
     <div className="max-w-4xl mx-auto p-6">
       <h1 className="text-2xl font-bold mb-6">Web 自动化测试 Agent</h1>
-      
+
       <div className="flex gap-2 mb-6">
-        <TextArea 
-          value={inputValue} 
+        <TextArea
+          value={inputValue}
           onChange={handleChange}
           placeholder="请输入测试任务，例如：访问百度首页并搜索'测试'"
           className="flex-1"
           rows={3}
         />
-        <Button 
-          type="primary" 
+        <Button
+          type="primary"
           onClick={handleSubmit}
           loading={isLoading}
           disabled={!inputValue.trim()}
@@ -148,7 +212,27 @@ export default function Home() {
         />
       )}
 
-      {isLoading && (
+      {isPaused && (
+        <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-4 mb-6">
+          <div className="flex items-center gap-3 mb-3">
+            <span className="text-2xl">🔐</span>
+            <div>
+              <h3 className="font-semibold text-lg">检测到登录页面</h3>
+              <p className="text-gray-600">请在浏览器中完成登录，然后点击继续按钮</p>
+            </div>
+          </div>
+          <Button
+            type="primary"
+            size="large"
+            onClick={handleResume}
+            loading={isResuming}
+          >
+            已完成登录，继续测试
+          </Button>
+        </div>
+      )}
+
+      {isLoading && !isPaused && (
         <div className="flex items-center gap-2 mb-6">
           <Spin size="large" />
           <span>测试进行中...</span>
@@ -162,19 +246,29 @@ export default function Home() {
             {progress.map((item, index) => {
               const statusInfo = getStatusIcon(item.status);
               return (
-                <Timeline.Item 
+                <Timeline.Item
                   key={index}
-                  color={item.status === 'error' ? 'red' : item.status === 'completed' ? 'green' : 'blue'}
+                  color={
+                    item.status === 'error' ? 'red' :
+                    item.status === 'completed' ? 'green' :
+                    item.status === 'login_required' ? 'orange' :
+                    'blue'
+                  }
                 >
                   <div className="flex items-center gap-2">
                     <span>{statusInfo.icon}</span>
                     <span className="font-medium">{statusInfo.label}</span>
-                    {item.step && <span className="text-sm text-gray-500">Step {item.step}</span>}
+                    {item.step > 0 && <span className="text-sm text-gray-500">Step {item.step}</span>}
                   </div>
                   {item.tool && (
                     <div className="mt-1 text-sm">
                       <span className="text-gray-600">工具：</span>
                       <span className="font-mono">{item.tool}</span>
+                    </div>
+                  )}
+                  {item.message && (
+                    <div className="mt-1 text-sm text-gray-700 bg-gray-50 p-2 rounded">
+                      {item.message}
                     </div>
                   )}
                   {(item.result || item.error) && (

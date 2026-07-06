@@ -8,8 +8,72 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { getLLMClient } from "../../llm/llmClient";
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { randomUUID } from 'crypto';
 
 const execAsync = promisify(exec);
+
+// =============================================
+// 登录拦截器：关键词列表
+// =============================================
+const LOGIN_KEYWORDS = [
+  '登录', '登陆', '密码', 'password', 'login', 'signin', 'sign in',
+  '用户名', 'username', '账号', '验证码', 'captcha'
+];
+
+// =============================================
+// 登录拦截器：暂停/恢复状态管理
+// =============================================
+const pendingResumes = new Map<string, () => void>();
+
+function waitForResume(taskId: string): Promise<void> {
+  return new Promise((resolve) => {
+    pendingResumes.set(taskId, resolve);
+  });
+}
+
+function resumeTest(taskId: string): boolean {
+  const resolve = pendingResumes.get(taskId);
+  if (resolve) {
+    resolve();
+    pendingResumes.delete(taskId);
+    return true;
+  }
+  return false;
+}
+
+// =============================================
+// 登录拦截器：检测登录页面
+// =============================================
+async function isLoginPage(pageContent: string, llmClient: any): Promise<boolean> {
+  // 第一层：关键词匹配
+  const hasKeyword = LOGIN_KEYWORDS.some(keyword => 
+    pageContent.toLowerCase().includes(keyword.toLowerCase())
+  );
+  
+  if (!hasKeyword) {
+    return false;
+  }
+  
+  // 第二层：LLM 确认
+  try {
+    const prompt = `判断以下页面快照是否为登录页面。只需回答"是"或"否"。
+    
+页面快照内容：
+${pageContent.slice(0, 2000)}
+
+回答：`;
+    
+    const response = await llmClient.chat(
+      '你是一个页面识别助手，专门判断页面是否为登录界面。',
+      prompt
+    );
+    
+    return response?.trim().includes('是') || false;
+  } catch (error) {
+    console.error('LLM 登录页面检测失败:', error);
+    return hasKeyword;
+  }
+}
 
 let mcpClientInstance: Client | null = null;
 let mcpTransportInstance: StdioClientTransport | null = null;
@@ -144,8 +208,26 @@ function trimMessages(messages: ChatCompletionMessageParam[], maxMessages: numbe
 export async function POST(req: NextRequest) {
   try {
     const data = await req.json();
-    const { input } = data;
+    const { input, action, taskId } = data;
 
+    // 处理恢复测试请求
+    if (action === 'resume') {
+      if (!taskId) {
+        return NextResponse.json(
+          { success: false, error: "缺少 taskId" }, 
+          { status: 400 }
+        );
+      }
+      
+      const resumed = resumeTest(taskId);
+      
+      return NextResponse.json({
+        success: resumed,
+        message: resumed ? "测试已恢复" : "未找到暂停的测试任务"
+      });
+    }
+
+    // 处理启动测试请求
     if (!input) {
       return NextResponse.json({ success: false, error: "缺少测试任务输入" }, { status: 400 });
     }
@@ -208,9 +290,13 @@ async function runTestAgentWithStream(
   testTask: string,
   onProgress: (data: string) => void
 ): Promise<void> {
+  const taskId = randomUUID();
   const mcpClient = await getMCPClient();
   const tools = await getTools();
   const llmClient = getLLMClient();
+
+  // 发送任务ID给前端
+  onProgress(JSON.stringify({ step: 0, status: "started", taskId }));
 
   const messages: ChatCompletionMessageParam[] = [
     { role: 'user', content: testTask }
@@ -281,12 +367,48 @@ async function runTestAgentWithStream(
             content: toolResultText,
           });
 
-          onProgress(JSON.stringify({ 
-            step: step + 1, 
-            status: "tool_result", 
+          onProgress(JSON.stringify({
+            step: step + 1,
+            status: "tool_result",
             tool: toolName,
             result: toolResultText.slice(0, 500)
           }));
+
+          // 🔥 登录拦截器：检测登录页面
+          if (toolName === 'browser_snapshot') {
+            const isLogin = await isLoginPage(toolResultText, llmClient);
+
+            if (isLogin) {
+              console.log(`🔐 检测到登录页面，暂停测试任务: ${taskId}`);
+
+              // 发送暂停信号给前端
+              onProgress(JSON.stringify({
+                step: step + 1,
+                status: "login_required",
+                taskId,
+                message: "检测到登录页面，请手动登录后点击继续"
+              }));
+
+              // 等待用户恢复信号
+              await waitForResume(taskId);
+
+              console.log(`✅ 测试任务已恢复: ${taskId}`);
+
+              // 用户已登录，继续执行
+              onProgress(JSON.stringify({
+                step: step + 1,
+                status: "resumed",
+                taskId,
+                message: "用户已登录，继续测试"
+              }));
+
+              // 🔥 关键：注入消息告诉 LLM 用户已登录，需要重新获取页面状态
+              messages.push({
+                role: "user",
+                content: "用户已手动完成登录。请使用 browser_snapshot 重新获取当前页面状态，然后继续执行原测试任务。"
+              });
+            }
+          }
 
         } catch (error) {
           const errorMsg = `工具调用失败: ${error instanceof Error ? error.message : "unknown"}`;
