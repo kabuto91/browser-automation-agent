@@ -9,6 +9,7 @@ import { getLLMClient } from "../../llm/llmClient";
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { randomUUID } from 'crypto';
+import { processSnapshot } from "../../utils/snapshotProcessor";
 
 const execAsync = promisify(exec);
 
@@ -46,28 +47,28 @@ function resumeTest(taskId: string): boolean {
 // =============================================
 async function isLoginPage(pageContent: string, llmClient: any): Promise<boolean> {
   // 第一层：关键词匹配
-  const hasKeyword = LOGIN_KEYWORDS.some(keyword => 
+  const hasKeyword = LOGIN_KEYWORDS.some(keyword =>
     pageContent.toLowerCase().includes(keyword.toLowerCase())
   );
-  
+
   if (!hasKeyword) {
     return false;
   }
-  
+
   // 第二层：LLM 确认
   try {
     const prompt = `判断以下页面快照是否为登录页面。只需回答"是"或"否"。
-    
+
 页面快照内容：
 ${pageContent.slice(0, 2000)}
 
 回答：`;
-    
+
     const response = await llmClient.chat(
       '你是一个页面识别助手，专门判断页面是否为登录界面。',
       prompt
     );
-    
+
     return response?.trim().includes('是') || false;
   } catch (error) {
     console.error('LLM 登录页面检测失败:', error);
@@ -197,8 +198,8 @@ const SYSTEM_PROMPT = `你是一个专业的 Web 自动化测试 Agent。
 // =============================================
 function trimMessages(messages: ChatCompletionMessageParam[], maxMessages: number = 10): ChatCompletionMessageParam[] {
   if (messages.length <= maxMessages) return messages;
-  
-  // 保留最近的消息
+
+  // 保留最近的消息，确保消息结构完整
   return messages.slice(-maxMessages);
 }
 
@@ -361,22 +362,27 @@ async function runTestAgentWithStream(
               ? result.content
               : JSON.stringify(result.content);
 
+          // 🔥 优化点1：快照预处理（保留完整格式）
+          const processedResult = toolName === 'browser_snapshot'
+            ? processSnapshot(toolResultText)
+            : toolResultText;
+
           messages.push({
             role: "tool",
             tool_call_id: toolCall.id,
-            content: toolResultText,
+            content: processedResult,
           });
 
           onProgress(JSON.stringify({
             step: step + 1,
             status: "tool_result",
             tool: toolName,
-            result: toolResultText.slice(0, 500)
+            result: processedResult.slice(0, 500)
           }));
 
           // 🔥 登录拦截器：检测登录页面
           if (toolName === 'browser_snapshot') {
-            const isLogin = await isLoginPage(toolResultText, llmClient);
+            const isLogin = await isLoginPage(processedResult, llmClient);
 
             if (isLogin) {
               console.log(`🔐 检测到登录页面，暂停测试任务: ${taskId}`);
