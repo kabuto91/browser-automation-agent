@@ -1,6 +1,5 @@
 // 脚本执行器 - 按顺序执行工具调用序列
 
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { ToolCall } from './stepLibraryDB';
 
 export interface ExecutionResult {
@@ -9,9 +8,13 @@ export interface ExecutionResult {
   executedSteps: number;
 }
 
+export interface MCPClient {
+  callTool(params: { name: string; arguments: any }): Promise<any>;
+}
+
 export async function executeScript(
   script: ToolCall[],
-  mcpClient: Client,
+  mcpClient: MCPClient,
   onProgress?: (step: number, total: number, toolName: string) => void
 ): Promise<ExecutionResult> {
   for (let i = 0; i < script.length; i++) {

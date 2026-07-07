@@ -1,8 +1,7 @@
 // 脚本验证器 - 执行脚本多次验证稳定性
 
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { ToolCall } from './stepLibraryDB';
-import { executeScript } from './scriptExecutor';
+import { executeScript, MCPClient } from './scriptExecutor';
 
 export interface ValidationResult {
   valid: boolean;
@@ -13,7 +12,7 @@ export interface ValidationResult {
 
 export async function validateScript(
   script: ToolCall[],
-  mcpClient: Client,
+  mcpClient: MCPClient,
   times: number = 3,
   onProgress?: (attempt: number, total: number, success: boolean) => void
 ): Promise<ValidationResult> {
