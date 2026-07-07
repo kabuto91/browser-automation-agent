@@ -482,8 +482,8 @@ async function runTestAgentWithStream(
       }
 
       for (const toolCall of assistantMessage.tool_calls) {
-        const toolName = toolCall.function.name;
-        const toolArgs = JSON.parse(toolCall.function.arguments);
+        const toolName = (toolCall as any).function.name;
+        const toolArgs = JSON.parse((toolCall as any).function.arguments);
 
         // 收集工具调用到脚本
         scriptCollector.addToolCall(toolName, toolArgs);

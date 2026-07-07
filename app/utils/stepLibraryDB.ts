@@ -102,6 +102,18 @@ export async function deleteStep(id: string): Promise<void> {
   });
 }
 
+export async function updateStep(step: TestStep): Promise<void> {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([STORE_NAME], 'readwrite');
+    const objectStore = transaction.objectStore(STORE_NAME);
+    const request = objectStore.put(step);
+
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(new Error('Failed to update step'));
+  });
+}
+
 export async function updateStepStats(id: string, success: boolean): Promise<void> {
   const db = await getDB();
   return new Promise((resolve, reject) => {
