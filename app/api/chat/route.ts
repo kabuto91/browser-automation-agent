@@ -5,7 +5,7 @@ import type {
 } from "openai/resources/chat/completions";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { getLLMClient } from "../../llm/llmClient";
+import { getLLMClient, LLMClient } from "../../llm/llmClient";
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { randomUUID } from 'crypto';
@@ -49,7 +49,7 @@ function resumeTest(taskId: string): boolean {
 // =============================================
 // 登录拦截器：检测登录页面
 // =============================================
-async function isLoginPage(pageContent: string, llmClient: any): Promise<boolean> {
+async function isLoginPage(pageContent: string, llmClient: LLMClient): Promise<boolean> {
   // 第一层：关键词匹配
   const hasKeyword = LOGIN_KEYWORDS.some(keyword =>
     pageContent.toLowerCase().includes(keyword.toLowerCase())
