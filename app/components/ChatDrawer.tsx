@@ -1,7 +1,8 @@
 "use client";
 
-import { Drawer, Input, Button, Spin, Alert, Timeline } from 'antd';
+import { Drawer, Input, Button, Spin, Alert, Timeline, Modal, message } from 'antd';
 import { useState, useRef } from 'react';
+import { addStep, ToolCall } from '../utils/stepLibraryDB';
 
 interface ProgressStep {
   step: number;
@@ -11,6 +12,7 @@ interface ProgressStep {
   error?: string;
   message?: string;
   taskId?: string;
+  script?: ToolCall[];
 }
 
 interface ChatDrawerProps {
@@ -27,6 +29,10 @@ export default function ChatDrawer({ open, onClose }: ChatDrawerProps) {
   const [finalResult, setFinalResult] = useState('');
   const [isPaused, setIsPaused] = useState(false);
   const [isResuming, setIsResuming] = useState(false);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [stepName, setStepName] = useState('');
+  const [currentScript, setCurrentScript] = useState<ToolCall[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
   const currentTaskIdRef = useRef('');
   const streamReaderRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
 
@@ -70,6 +76,9 @@ export default function ChatDrawer({ open, onClose }: ChatDrawerProps) {
               setIsPaused(false);
             } else if (data.status === 'completed') {
               setFinalResult(data.result);
+              if (data.script && data.script.length > 0) {
+                setCurrentScript(data.script);
+              }
               setIsLoading(false);
               return;
             } else if (data.status === 'error') {
@@ -161,6 +170,99 @@ export default function ChatDrawer({ open, onClose }: ChatDrawerProps) {
       setError(err instanceof Error ? err.message : '恢复失败');
     } finally {
       setIsResuming(false);
+    }
+  };
+
+  const handleSaveToLibrary = async () => {
+    if (!stepName.trim()) {
+      message.warning('请输入步骤名称');
+      return;
+    }
+
+    if (currentScript.length === 0) {
+      message.warning('没有可保存的脚本');
+      return;
+    }
+
+    setIsSaving(true);
+    setError('');
+
+    try {
+      // 验证脚本（执行 3 次）
+      const validateResponse = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'validate',
+          script: currentScript,
+        }),
+      });
+
+      if (!validateResponse.ok) {
+        throw new Error(`验证请求失败: ${validateResponse.status}`);
+      }
+
+      const reader = validateResponse.body?.getReader();
+      if (!reader) {
+        throw new Error('No response body');
+      }
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let validationResult: any = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.substring(6));
+              if (data.status === 'validation_complete') {
+                validationResult = data;
+              }
+            } catch (parseError) {
+              console.error('Failed to parse validation data:', parseError);
+            }
+          }
+        }
+      }
+
+      if (!validationResult) {
+        throw new Error('未收到验证结果');
+      }
+
+      if (!validationResult.valid) {
+        message.error(`脚本验证失败：成功 ${validationResult.successCount}/${validationResult.totalAttempts} 次`);
+        return;
+      }
+
+      // 验证通过，保存到 IndexedDB
+      const newStep = {
+        id: crypto.randomUUID(),
+        name: stepName,
+        originalTask: inputValue,
+        script: currentScript,
+        createdAt: Date.now(),
+        successCount: 0,
+      };
+
+      await addStep(newStep);
+      message.success('步骤已保存到步骤库');
+      setShowSaveModal(false);
+      setStepName('');
+      setCurrentScript([]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '保存失败');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -302,9 +404,44 @@ export default function ChatDrawer({ open, onClose }: ChatDrawerProps) {
           <div className="bg-green-50 border border-green-200 rounded-lg p-4">
             <h2 className="text-lg font-semibold mb-2">测试结果</h2>
             <p className="whitespace-pre-wrap">{finalResult}</p>
+            {currentScript.length > 0 && (
+              <Button
+                type="primary"
+                onClick={() => setShowSaveModal(true)}
+                className="mt-3"
+              >
+                保存到步骤库
+              </Button>
+            )}
           </div>
         )}
       </div>
+
+      <Modal
+        title="保存到步骤库"
+        open={showSaveModal}
+        onOk={handleSaveToLibrary}
+        onCancel={() => {
+          setShowSaveModal(false);
+          setStepName('');
+        }}
+        confirmLoading={isSaving}
+        okText="保存"
+        cancelText="取消"
+      >
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-2">步骤名称</label>
+          <Input
+            value={stepName}
+            onChange={(e) => setStepName(e.target.value)}
+            placeholder="请输入步骤名称"
+          />
+        </div>
+        <div className="text-sm text-gray-500">
+          <p>脚本将自动验证 3 次以确保稳定性</p>
+          <p className="mt-1">当前脚本包含 {currentScript.length} 个步骤</p>
+        </div>
+      </Modal>
     </Drawer>
   );
 }

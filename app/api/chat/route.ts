@@ -10,6 +10,10 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import { randomUUID } from 'crypto';
 import { processSnapshot } from "../../utils/snapshotProcessor";
+import { ScriptCollector } from "../../utils/scriptCollector";
+import { executeScript } from "../../utils/scriptExecutor";
+import { validateScript } from "../../utils/scriptValidator";
+import type { ToolCall } from "../../utils/stepLibraryDB";
 
 const execAsync = promisify(exec);
 
@@ -172,7 +176,7 @@ async function getTools(): Promise<ChatCompletionTool[]> {
     },
   }));
 
-  console.log(`🧰 可用工具 (${toolsCache.length}个):`, toolsCache.map((t) => t.function.name).join(", "));
+  console.log(`🧰 可用工具 (${toolsCache.length}个):`, toolsCache.map((t) => (t as any).function?.name || 'unknown').join(", "));
   return toolsCache;
 }
 
@@ -215,16 +219,147 @@ export async function POST(req: NextRequest) {
     if (action === 'resume') {
       if (!taskId) {
         return NextResponse.json(
-          { success: false, error: "缺少 taskId" }, 
+          { success: false, error: "缺少 taskId" },
           { status: 400 }
         );
       }
-      
+
       const resumed = resumeTest(taskId);
-      
+
       return NextResponse.json({
         success: resumed,
         message: resumed ? "测试已恢复" : "未找到暂停的测试任务"
+      });
+    }
+
+    // 处理脚本验证请求
+    if (action === 'validate') {
+      const { script } = data;
+
+      if (!script || !Array.isArray(script)) {
+        return NextResponse.json(
+          { success: false, error: "缺少脚本数据" },
+          { status: 400 }
+        );
+      }
+
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream({
+        async start(controller) {
+          try {
+            const mcpClient = await getMCPClient();
+
+            // 发送验证开始消息
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+              status: 'validating',
+              message: '开始验证脚本稳定性'
+            })}\n\n`));
+
+            const result = await validateScript(
+              script,
+              mcpClient,
+              3,
+              (attempt, total, success) => {
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                  status: 'validation_progress',
+                  attempt,
+                  total,
+                  success
+                })}\n\n`));
+              }
+            );
+
+            // 发送验证完成消息
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+              status: 'validation_complete',
+              ...result
+            })}\n\n`));
+
+            controller.close();
+          } catch (error) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+              status: 'error',
+              error: error instanceof Error ? error.message : '验证失败'
+            })}\n\n`));
+            controller.close();
+          } finally {
+            // 清理 MCP 客户端，关闭浏览器
+            await cleanupMCPClient();
+          }
+        },
+      });
+
+      return new NextResponse(stream, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          "Connection": "keep-alive",
+        },
+      });
+    }
+
+    // 处理脚本执行请求
+    if (action === 'execute-script') {
+      const { script } = data;
+
+      if (!script || !Array.isArray(script)) {
+        return NextResponse.json(
+          { success: false, error: "缺少脚本数据" },
+          { status: 400 }
+        );
+      }
+
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream({
+        async start(controller) {
+          try {
+            const mcpClient = await getMCPClient();
+
+            const result = await executeScript(
+              script,
+              mcpClient,
+              (step, total, toolName) => {
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                  status: 'executing',
+                  step,
+                  total,
+                  tool: toolName
+                })}\n\n`));
+              }
+            );
+
+            if (result.success) {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                status: 'completed',
+                result: '脚本执行成功'
+              })}\n\n`));
+            } else {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                status: 'error',
+                error: result.error || '执行失败'
+              })}\n\n`));
+            }
+
+            controller.close();
+          } catch (error) {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+              status: 'error',
+              error: error instanceof Error ? error.message : '执行失败'
+            })}\n\n`));
+            controller.close();
+          } finally {
+            // 清理 MCP 客户端，关闭浏览器
+            await cleanupMCPClient();
+          }
+        },
+      });
+
+      return new NextResponse(stream, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          "Connection": "keep-alive",
+        },
       });
     }
 
@@ -289,12 +424,14 @@ export async function POST(req: NextRequest) {
 
 async function runTestAgentWithStream(
   testTask: string,
-  onProgress: (data: string) => void
-): Promise<void> {
+  onProgress: (data: string) => void,
+  collector?: ScriptCollector
+): Promise<{ script: ToolCall[] }> {
   const taskId = randomUUID();
   const mcpClient = await getMCPClient();
   const tools = await getTools();
   const llmClient = getLLMClient();
+  const scriptCollector = collector || new ScriptCollector();
 
   // 发送任务ID给前端
   onProgress(JSON.stringify({ step: 0, status: "started", taskId }));
@@ -325,7 +462,14 @@ async function runTestAgentWithStream(
 
       if (!assistantMessage.tool_calls || assistantMessage.tool_calls.length === 0) {
         const result = assistantMessage.content || "测试完成";
-        onProgress(JSON.stringify({ step: step + 1, status: "completed", result }));
+        const script = scriptCollector.getScript();
+        
+        onProgress(JSON.stringify({ 
+          step: step + 1, 
+          status: "completed", 
+          result,
+          script 
+        }));
 
         if (testResultCache.size >= MAX_CACHE_SIZE) {
           const firstKey = testResultCache.keys().next().value;
@@ -334,12 +478,15 @@ async function runTestAgentWithStream(
           }
         }
         testResultCache.set(testTask, result);
-        return;
+        return { script };
       }
 
       for (const toolCall of assistantMessage.tool_calls) {
         const toolName = toolCall.function.name;
         const toolArgs = JSON.parse(toolCall.function.arguments);
+
+        // 收集工具调用到脚本
+        scriptCollector.addToolCall(toolName, toolArgs);
 
         onProgress(JSON.stringify({ step: step + 1, status: "executing", tool: toolName }));
 
@@ -431,6 +578,7 @@ async function runTestAgentWithStream(
     }
 
     onProgress(JSON.stringify({ step: MAX_STEPS, status: "completed", result: "达到最大步数限制，测试结束" }));
+    return { script: scriptCollector.getScript() };
   } finally {
     await cleanupMCPClient();
   }
