@@ -6,6 +6,7 @@ import { BrowserPool } from './browserPool';
 // 浏览器池实例（懒初始化）
 let browserPoolInstance: BrowserPool | null = null;
 let toolsCache: ChatCompletionTool[] | null = null;
+let rawToolsCache: Array<{ name: string; description: string; inputSchema: Record<string, unknown> }> | null = null;
 
 export function getBrowserPool(): BrowserPool {
   if (!browserPoolInstance) {
@@ -28,12 +29,20 @@ export async function getTools(): Promise<ChatCompletionTool[]> {
   try {
     const mcpTools = await entry.instance.client.listTools();
 
-    toolsCache = mcpTools.tools.map((tool) => ({
+    // 缓存原始工具数据（用于 LangChain）
+    rawToolsCache = mcpTools.tools.map((tool) => ({
+      name: tool.name,
+      description: tool.description || "",
+      inputSchema: tool.inputSchema as Record<string, unknown>,
+    }));
+
+    // 转换为 OpenAI 格式
+    toolsCache = rawToolsCache.map((tool) => ({
       type: "function" as const,
       function: {
         name: tool.name,
-        description: tool.description || "",
-        parameters: tool.inputSchema as Record<string, unknown>,
+        description: tool.description,
+        parameters: tool.inputSchema,
       },
     }));
 
@@ -42,6 +51,16 @@ export async function getTools(): Promise<ChatCompletionTool[]> {
   } finally {
     await pool.release(entry.clientId);
   }
+}
+
+/**
+ * 获取原始工具列表（用于 LangChain）
+ * 返回 { name, description, inputSchema } 格式
+ */
+export async function getRawTools(): Promise<Array<{ name: string; description: string; inputSchema: Record<string, unknown> }>> {
+  if (rawToolsCache) return rawToolsCache;
+  await getTools(); // 确保缓存已填充
+  return rawToolsCache!;
 }
 
 // 进程退出时清理资源

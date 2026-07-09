@@ -9,8 +9,12 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@langchain/core": "^1.2.1",
+    "@langchain/langgraph": "^1.4.7",
+    "@langchain/openai": "^1.5.3",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "antd": "^6.5.0",
+    "langchain": "^1.5.2",
     "next": "16.2.9",
     "openai": "^6.45.0",
     "react": "19.2.4",

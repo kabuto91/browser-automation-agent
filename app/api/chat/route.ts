@@ -10,7 +10,9 @@ import { ScriptCollector } from "../../utils/scriptCollector";
 import { executeScript } from "../../utils/scriptExecutor";
 import { validateScript } from "../../utils/scriptValidator";
 import type { ToolCall } from "../../utils/stepLibraryDB";
-import { getBrowserPool, getTools } from "../../mcp/mcpClient";
+import { getBrowserPool, getRawTools } from "../../mcp/mcpClient";
+import { createTestAgent } from "../../agents/testAgent";
+import { HumanMessage, AIMessage, ToolMessage } from "@langchain/core/messages";
 
 // =============================================
 // 登录拦截器：关键词列表
@@ -353,157 +355,152 @@ async function runTestAgentWithStream(
 ): Promise<{ script: ToolCall[] }> {
   const taskId = randomUUID();
   const mcpClient = externalClient || (await getBrowserPool().acquire()).instance.client;
-  const tools = await getTools();
+  const tools = await getRawTools();
   const llmClient = getLLMClient();
   const scriptCollector = collector || new ScriptCollector();
 
   // 发送任务ID给前端
   onProgress(JSON.stringify({ step: 0, status: "started", taskId }));
 
-  const messages: ChatCompletionMessageParam[] = [
-    { role: 'user', content: testTask }
-  ];
-
-  const MAX_STEPS = 10;
-
   try {
-    for (let step = 0; step < MAX_STEPS; step++) {
-      onProgress(JSON.stringify({ step: step + 1, status: "thinking" }));
+    // 使用 LangChain Agent 替代手动 ReAct 循环
+    const agent = await createTestAgent(tools, mcpClient);
 
-      const trimmedMessages = trimMessages(messages, 10);
+    let stepCount = 0;
+    let finalResult = "";
 
-      const assistantMessage = await llmClient.chatWithTool(
-        SYSTEM_PROMPT,
-        trimmedMessages,
-        tools,
-      );
+    // 使用流式处理
+    const stream = await agent.stream(
+      { messages: [new HumanMessage(testTask)] },
+      { streamMode: "updates" }
+    );
 
-      messages.push({
-        role: "assistant",
-        content: assistantMessage.content,
-        tool_calls: assistantMessage.tool_calls,
-      });
+    for await (const update of stream) {
+      stepCount++;
+      const updateObj = update as any;
 
-      if (!assistantMessage.tool_calls || assistantMessage.tool_calls.length === 0) {
-        const result = assistantMessage.content || "测试完成";
-        const script = scriptCollector.getScript();
-
-        onProgress(JSON.stringify({
-          step: step + 1,
-          status: "completed",
-          result,
-          script
-        }));
-
-        if (testResultCache.size >= MAX_CACHE_SIZE) {
-          const firstKey = testResultCache.keys().next().value;
-          if (firstKey !== undefined) {
-            testResultCache.delete(firstKey);
-          }
-        }
-        testResultCache.set(testTask, result);
-        return { script };
-      }
-
-      for (const toolCall of assistantMessage.tool_calls) {
-        const toolName = (toolCall as any).function.name;
-        const toolArgs = JSON.parse((toolCall as any).function.arguments);
-
-        // 收集工具调用到脚本
-        scriptCollector.addToolCall(toolName, toolArgs);
-
-        onProgress(JSON.stringify({ step: step + 1, status: "executing", tool: toolName }));
-
-        try {
-          // 添加超时机制，防止工具调用卡住
-          const timeoutPromise = new Promise<never>((_, reject) => {
-            setTimeout(() => reject(new Error(`工具调用超时: ${toolName}`)), 30000);
-          });
-
-          const result = await Promise.race([
-            mcpClient.callTool({
-              name: toolName,
-              arguments: toolArgs,
-            }),
-            timeoutPromise,
-          ]);
-
-          const toolResultText =
-            typeof result.content === "string"
-              ? result.content
-              : JSON.stringify(result.content);
-
-          // 🔥 优化点1：快照预处理（保留完整格式）
-          const processedResult = toolName === 'browser_snapshot'
-            ? processSnapshot(toolResultText)
-            : toolResultText;
-
-          messages.push({
-            role: "tool",
-            tool_call_id: toolCall.id,
-            content: processedResult,
-          });
-
-          onProgress(JSON.stringify({
-            step: step + 1,
-            status: "tool_result",
-            tool: toolName,
-            result: processedResult.slice(0, 500)
-          }));
-
-          // 🔥 登录拦截器：检测登录页面
-          if (toolName === 'browser_snapshot') {
-            const isLogin = await isLoginPage(processedResult, llmClient);
-
-            if (isLogin) {
-              console.log(`🔐 检测到登录页面，暂停测试任务: ${taskId}`);
-
-              // 发送暂停信号给前端
+      // 处理 Agent 节点的输出（LLM 响应）
+      if (updateObj.agent?.messages) {
+        for (const message of updateObj.agent.messages) {
+          // 处理 AI 消息（LLM 输出）
+          if (message._getType() === "ai") {
+            const content = message.content;
+            if (content) {
               onProgress(JSON.stringify({
-                step: step + 1,
-                status: "login_required",
-                taskId,
-                message: "检测到登录页面，请手动登录后点击继续"
+                step: stepCount,
+                status: "thinking",
+                content: typeof content === "string" ? content : JSON.stringify(content)
               }));
+            }
 
-              // 等待用户恢复信号
-              await waitForResume(taskId);
-
-              console.log(`✅ 测试任务已恢复: ${taskId}`);
-
-              // 用户已登录，继续执行
-              onProgress(JSON.stringify({
-                step: step + 1,
-                status: "resumed",
-                taskId,
-                message: "用户已登录，继续测试"
-              }));
-
-              // 🔥 关键：注入消息告诉 LLM 用户已登录，需要重新获取页面状态
-              messages.push({
-                role: "user",
-                content: "用户已手动完成登录。请使用 browser_snapshot 重新获取当前页面状态，然后继续执行原测试任务。"
-              });
+            // 处理工具调用
+            if (message.tool_calls && message.tool_calls.length > 0) {
+              for (const toolCall of message.tool_calls) {
+                onProgress(JSON.stringify({
+                  step: stepCount,
+                  status: "executing",
+                  tool: toolCall.name
+                }));
+              }
             }
           }
+        }
+      }
 
-        } catch (error) {
-          const errorMsg = `工具调用失败: ${error instanceof Error ? error.message : "unknown"}`;
+      // 处理工具节点的输出（工具执行结果）
+      if (updateObj.tools?.messages) {
+        for (const message of updateObj.tools.messages) {
+          if (message._getType() === "tool") {
+            const toolName = message.name || "unknown";
+            const toolResult = message.content;
 
-          messages.push({
-            role: "tool",
-            tool_call_id: toolCall.id,
-            content: errorMsg,
-          });
+            // 收集工具调用到脚本
+            const toolCallId = message.tool_call_id;
+            if (toolCallId) {
+              const aiMessages = updateObj.agent?.messages?.filter((m: any) => m._getType() === "ai") || [];
+              for (const aiMessage of aiMessages) {
+                if (aiMessage.tool_calls) {
+                  const toolCall = aiMessage.tool_calls.find((tc: any) => tc.id === toolCallId);
+                  if (toolCall) {
+                    scriptCollector.addToolCall(toolName, toolCall.args);
+                    break;
+                  }
+                }
+              }
+            }
 
-          onProgress(JSON.stringify({ step: step + 1, status: "error", error: errorMsg }));
+            // 处理快照预处理
+            let processedResult = typeof toolResult === "string" ? toolResult : JSON.stringify(toolResult);
+            if (toolName === 'browser_snapshot') {
+              processedResult = processSnapshot(processedResult);
+            }
+
+            onProgress(JSON.stringify({
+              step: stepCount,
+              status: "tool_result",
+              tool: toolName,
+              result: processedResult.slice(0, 500)
+            }));
+
+            // 🔥 登录拦截器：检测登录页面
+            if (toolName === 'browser_snapshot') {
+              const isLogin = await isLoginPage(processedResult, llmClient);
+
+              if (isLogin) {
+                console.log(`🔐 检测到登录页面，暂停测试任务: ${taskId}`);
+
+                onProgress(JSON.stringify({
+                  step: stepCount,
+                  status: "login_required",
+                  taskId,
+                  message: "检测到登录页面，请手动登录后点击继续"
+                }));
+
+                await waitForResume(taskId);
+
+                console.log(`✅ 测试任务已恢复: ${taskId}`);
+
+                onProgress(JSON.stringify({
+                  step: stepCount,
+                  status: "resumed",
+                  taskId,
+                  message: "用户已登录，继续测试"
+                }));
+              }
+            }
+          }
         }
       }
     }
 
-    onProgress(JSON.stringify({ step: MAX_STEPS, status: "completed", result: "达到最大步数限制，测试结束" }));
+    // 提取最终结果
+    const script = scriptCollector.getScript();
+    finalResult = "测试完成";
+
+    onProgress(JSON.stringify({
+      step: stepCount,
+      status: "completed",
+      result: finalResult,
+      script
+    }));
+
+    // 缓存结果
+    if (testResultCache.size >= MAX_CACHE_SIZE) {
+      const firstKey = testResultCache.keys().next().value;
+      if (firstKey !== undefined) {
+        testResultCache.delete(firstKey);
+      }
+    }
+    testResultCache.set(testTask, finalResult);
+
+    return { script };
+  } catch (error) {
+    const errorMsg = `Agent 执行失败: ${error instanceof Error ? error.message : "unknown"}`;
+    onProgress(JSON.stringify({
+      step: 0,
+      status: "error",
+      error: errorMsg
+    }));
     return { script: scriptCollector.getScript() };
-  } finally {
-    // 不再在这里清理 MCP 客户端，由调用方负责归还浏览器实例
   }
 }
