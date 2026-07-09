@@ -10,7 +10,7 @@ import { ScriptCollector } from "../../utils/scriptCollector";
 import { executeScript } from "../../utils/scriptExecutor";
 import { validateScript } from "../../utils/scriptValidator";
 import type { ToolCall } from "../../utils/stepLibraryDB";
-import { getMCPClient, getTools, cleanupMCPClient } from "../../mcp/mcpClient";
+import { getBrowserPool, getTools } from "../../mcp/mcpClient";
 
 // =============================================
 // 登录拦截器：关键词列表
@@ -141,8 +141,11 @@ export async function POST(req: NextRequest) {
       const encoder = new TextEncoder();
       const stream = new ReadableStream({
         async start(controller) {
+          const pool = getBrowserPool();
+          let clientId: string | null = null;
           try {
-            const mcpClient = await getMCPClient();
+            const entry = await pool.acquire();
+            clientId = entry.clientId;
 
             // 发送验证开始消息
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({
@@ -152,7 +155,7 @@ export async function POST(req: NextRequest) {
 
             const result = await validateScript(
               script,
-              mcpClient,
+              entry.instance.client,
               3,
               (attempt, total, success) => {
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({
@@ -178,8 +181,10 @@ export async function POST(req: NextRequest) {
             })}\n\n`));
             controller.close();
           } finally {
-            // 清理 MCP 客户端，关闭浏览器
-            await cleanupMCPClient();
+            // 归还浏览器实例到池
+            if (clientId) {
+              await pool.release(clientId);
+            }
           }
         },
       });
@@ -196,6 +201,8 @@ export async function POST(req: NextRequest) {
     // 处理脚本执行请求
     if (action === 'execute-script') {
       const { script } = data;
+      const requestId = Math.random().toString(36).substring(7);
+      console.log(`📥 [${requestId}] 收到 execute-script 请求`);
 
       if (!script || !Array.isArray(script)) {
         return NextResponse.json(
@@ -207,12 +214,19 @@ export async function POST(req: NextRequest) {
       const encoder = new TextEncoder();
       const stream = new ReadableStream({
         async start(controller) {
+          console.log(`🔄 [${requestId}] 开始处理 execute-script 请求`);
+          const pool = getBrowserPool();
+          console.log(`🔄 [${requestId}] 获取浏览器池实例，当前状态:`, pool.getStatus());
+          let clientId: string | null = null;
           try {
-            const mcpClient = await getMCPClient();
+            console.log(`🔄 [${requestId}] 开始获取浏览器实例...`);
+            const entry = await pool.acquire();
+            clientId = entry.clientId;
+            console.log(`✅ [${requestId}] 获取到浏览器实例: clientId=${clientId}, instanceId=${entry.instance.instanceId}, PID=${entry.instance.pid}, userDataDir=${entry.instance.userDataDir}`);
 
             const result = await executeScript(
               script,
-              mcpClient,
+              entry.instance.client,
               (step, total, toolName) => {
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({
                   status: 'executing',
@@ -220,7 +234,8 @@ export async function POST(req: NextRequest) {
                   total,
                   tool: toolName
                 })}\n\n`));
-              }
+              },
+              entry.instance.instanceId
             );
 
             if (result.success) {
@@ -243,8 +258,10 @@ export async function POST(req: NextRequest) {
             })}\n\n`));
             controller.close();
           } finally {
-            // 清理 MCP 客户端，关闭浏览器
-            await cleanupMCPClient();
+            // 归还浏览器实例到池
+            if (clientId) {
+              await pool.release(clientId);
+            }
           }
         },
       });
@@ -276,28 +293,39 @@ export async function POST(req: NextRequest) {
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
+        const pool = getBrowserPool();
+        let clientId: string | null = null;
+
         const abortHandler = () => {
-          console.log("⚠️ 请求被中断，清理 MCP Client");
-          cleanupMCPClient().catch(console.error);
+          console.log("⚠️ 请求被中断，归还浏览器实例");
+          if (clientId) {
+            pool.release(clientId).catch(console.error);
+          }
           controller.error(new Error("Request aborted"));
         };
 
         req.signal.addEventListener('abort', abortHandler);
 
         try {
+          const entry = await pool.acquire();
+          clientId = entry.clientId;
+
           await runTestAgentWithStream(input, (data: string) => {
             controller.enqueue(encoder.encode(`data: ${data}\n\n`));
-          });
+          }, undefined, entry.instance.client);
           controller.close();
         } catch (error) {
           controller.error(error);
         } finally {
           req.signal.removeEventListener('abort', abortHandler);
+          // 归还浏览器实例到池
+          if (clientId) {
+            await pool.release(clientId);
+          }
         }
       },
       cancel() {
-        console.log("⚠️ Stream 被取消，清理 MCP Client");
-        cleanupMCPClient().catch(console.error);
+        console.log("⚠️ Stream 被取消");
       },
     });
 
@@ -320,10 +348,11 @@ export async function POST(req: NextRequest) {
 async function runTestAgentWithStream(
   testTask: string,
   onProgress: (data: string) => void,
-  collector?: ScriptCollector
+  collector?: ScriptCollector,
+  externalClient?: any
 ): Promise<{ script: ToolCall[] }> {
   const taskId = randomUUID();
-  const mcpClient = await getMCPClient();
+  const mcpClient = externalClient || (await getBrowserPool().acquire()).instance.client;
   const tools = await getTools();
   const llmClient = getLLMClient();
   const scriptCollector = collector || new ScriptCollector();
@@ -358,12 +387,12 @@ async function runTestAgentWithStream(
       if (!assistantMessage.tool_calls || assistantMessage.tool_calls.length === 0) {
         const result = assistantMessage.content || "测试完成";
         const script = scriptCollector.getScript();
-        
-        onProgress(JSON.stringify({ 
-          step: step + 1, 
-          status: "completed", 
+
+        onProgress(JSON.stringify({
+          step: step + 1,
+          status: "completed",
           result,
-          script 
+          script
         }));
 
         if (testResultCache.size >= MAX_CACHE_SIZE) {
@@ -475,6 +504,6 @@ async function runTestAgentWithStream(
     onProgress(JSON.stringify({ step: MAX_STEPS, status: "completed", result: "达到最大步数限制，测试结束" }));
     return { script: scriptCollector.getScript() };
   } finally {
-    await cleanupMCPClient();
+    // 不再在这里清理 MCP 客户端，由调用方负责归还浏览器实例
   }
 }

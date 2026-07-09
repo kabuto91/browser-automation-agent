@@ -1,8 +1,14 @@
 "use client";
 
-import { Drawer, Button, Card, Empty, Spin, Alert, Popconfirm, message, Modal, Input, Space } from 'antd';
+import { Drawer, Button, Card, Empty, Spin, Alert, Popconfirm, message, Modal, Input, Space, Checkbox, Progress } from 'antd';
 import { useState, useEffect } from 'react';
 import { getAllSteps, deleteStep, updateStepStats, updateStep, TestStep, ToolCall } from '../utils/stepLibraryDB';
+
+interface ExecutionState {
+  status: 'idle' | 'running' | 'success' | 'error';
+  progress?: { step: number; total: number };
+  error?: string;
+}
 
 interface StepLibraryDrawerProps {
   open: boolean;
@@ -15,6 +21,11 @@ export default function StepLibraryDrawer({ open, onClose }: StepLibraryDrawerPr
   const [executingId, setExecutingId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
+
+  // 批量执行相关状态
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchExecuting, setBatchExecuting] = useState(false);
+  const [executionStates, setExecutionStates] = useState<Map<string, ExecutionState>>(new Map());
 
   // 编辑相关状态
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -54,6 +65,146 @@ export default function StepLibraryDrawer({ open, onClose }: StepLibraryDrawerPr
     } catch (err) {
       message.error('删除失败');
     }
+  };
+
+  // 批量执行相关函数
+  const handleSelect = (id: string, checked: boolean) => {
+    const newSelected = new Set(selectedIds);
+    if (checked) {
+      newSelected.add(id);
+    } else {
+      newSelected.delete(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(new Set(steps.map(s => s.id)));
+    } else {
+      setSelectedIds(new Set());
+    }
+  };
+
+  const handleBatchExecute = async () => {
+    if (selectedIds.size === 0) {
+      message.warning('请至少选择一个步骤');
+      return;
+    }
+
+    setBatchExecuting(true);
+    setError('');
+
+    // 初始化执行状态
+    const initialStates = new Map<string, ExecutionState>();
+    selectedIds.forEach(id => {
+      initialStates.set(id, { status: 'idle' });
+    });
+    setExecutionStates(initialStates);
+
+    const selectedSteps = steps.filter(s => selectedIds.has(s.id));
+
+    console.log(`🚀 开始批量执行 ${selectedSteps.length} 个步骤`);
+
+    // 并行执行所有选中的步骤
+    const executionPromises = selectedSteps.map(async (step, index) => {
+      try {
+        console.log(`🚀 [${index + 1}/${selectedSteps.length}] 开始执行步骤: ${step.name}`);
+
+        // 更新状态为运行中
+        setExecutionStates(prev => {
+          const next = new Map(prev);
+          next.set(step.id, { status: 'running' });
+          return next;
+        });
+
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            action: 'execute-script',
+            script: step.script,
+          }),
+        });
+
+        console.log(`✅ [${index + 1}/${selectedSteps.length}] 收到响应: ${step.name}`);
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) {
+          throw new Error('No response body');
+        }
+
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.substring(6));
+
+                if (data.status === 'executing') {
+                  setExecutionStates(prev => {
+                    const next = new Map(prev);
+                    next.set(step.id, {
+                      status: 'running',
+                      progress: { step: data.step, total: data.total }
+                    });
+                    return next;
+                  });
+                } else if (data.status === 'completed') {
+                  await updateStepStats(step.id, true);
+                  setExecutionStates(prev => {
+                    const next = new Map(prev);
+                    next.set(step.id, { status: 'success' });
+                    return next;
+                  });
+                } else if (data.status === 'error') {
+                  await updateStepStats(step.id, false);
+                  setExecutionStates(prev => {
+                    const next = new Map(prev);
+                    next.set(step.id, { status: 'error', error: data.error });
+                    return next;
+                  });
+                }
+              } catch (parseError) {
+                console.error('Failed to parse SSE data:', parseError);
+              }
+            }
+          }
+        }
+      } catch (err) {
+        await updateStepStats(step.id, false);
+        setExecutionStates(prev => {
+          const next = new Map(prev);
+          next.set(step.id, {
+            status: 'error',
+            error: err instanceof Error ? err.message : 'Unknown error'
+          });
+          return next;
+        });
+      }
+    });
+
+    await Promise.all(executionPromises);
+
+    setBatchExecuting(false);
+    setSelectedIds(new Set());
+    loadSteps();
+    message.success('批量执行完成');
   };
 
   const handleExecute = async (step: TestStep) => {
@@ -293,7 +444,31 @@ export default function StepLibraryDrawer({ open, onClose }: StepLibraryDrawerPr
 
   return (
     <Drawer
-      title="步骤库"
+      title={
+        <div className="flex items-center justify-between">
+          <span>步骤库</span>
+          {steps.length > 0 && (
+            <div className="flex items-center gap-3">
+              <Checkbox
+                checked={selectedIds.size === steps.length && steps.length > 0}
+                indeterminate={selectedIds.size > 0 && selectedIds.size < steps.length}
+                onChange={(e) => handleSelectAll(e.target.checked)}
+                disabled={batchExecuting}
+              >
+                全选
+              </Checkbox>
+              <Button
+                type="primary"
+                onClick={handleBatchExecute}
+                loading={batchExecuting}
+                disabled={selectedIds.size === 0}
+              >
+                批量执行 ({selectedIds.size})
+              </Button>
+            </div>
+          )}
+        </div>
+      }
       placement="right"
       size="large"
       width={800}
@@ -320,86 +495,139 @@ export default function StepLibraryDrawer({ open, onClose }: StepLibraryDrawerPr
         <Empty description="步骤库为空" />
       ) : (
         <div className="space-y-4">
-          {steps.map((step) => (
-            <Card
-              key={step.id}
-              title={step.name}
-              extra={
-                <div className="flex gap-2">
-                  <Button
-                    type="primary"
-                    onClick={() => handleExecute(step)}
-                    loading={executingId === step.id}
-                    disabled={executingId !== null}
-                  >
-                    执行
-                  </Button>
-                  <Button onClick={() => handleEdit(step)}>
-                    编辑
-                  </Button>
-                  <Popconfirm
-                    title="确定要删除这个步骤吗？"
-                    onConfirm={() => handleDelete(step.id)}
-                    okText="确定"
-                    cancelText="取消"
-                  >
-                    <Button danger>删除</Button>
-                  </Popconfirm>
-                </div>
-              }
-            >
-              <div className="space-y-2 text-sm">
-                <div>
-                  <span className="text-gray-500">原始任务：</span>
-                  <span>{step.originalTask}</span>
-                </div>
-                <div>
-                  <span className="text-gray-500">创建时间：</span>
-                  <span>{formatDate(step.createdAt)}</span>
-                </div>
-                <div>
-                  <span className="text-gray-500">脚本步骤数：</span>
-                  <span>{step.script.length} 步</span>
-                </div>
-                <div>
-                  <span className="text-gray-500">成功执行次数：</span>
-                  <span className="text-green-600 font-medium">{step.successCount}</span>
-                </div>
-                {step.lastExecutedAt && (
-                  <div>
-                    <span className="text-gray-500">最后执行：</span>
-                    <span>{formatDate(step.lastExecutedAt)}</span>
+          {steps.map((step) => {
+            const execState = executionStates.get(step.id);
+            const isSelected = selectedIds.has(step.id);
+            const isRunning = execState?.status === 'running';
+            const isSuccess = execState?.status === 'success';
+            const isError = execState?.status === 'error';
+
+            return (
+              <Card
+                key={step.id}
+                title={
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      checked={isSelected}
+                      onChange={(e) => handleSelect(step.id, e.target.checked)}
+                      disabled={batchExecuting}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <span>{step.name}</span>
+                    {isRunning && (
+                      <span className="text-blue-500 text-sm">执行中...</span>
+                    )}
+                    {isSuccess && (
+                      <span className="text-green-500 text-sm">✓ 成功</span>
+                    )}
+                    {isError && (
+                      <span className="text-red-500 text-sm">✗ 失败</span>
+                    )}
                   </div>
-                )}
-                
-                {/* 脚本步骤列表 */}
-                <div className="mt-3">
-                  <Button 
-                    type="link" 
-                    size="small" 
-                    onClick={() => toggleExpand(step.id)}
-                    className="p-0"
-                  >
-                    {expandedSteps.has(step.id) ? '收起' : '展开'}脚本步骤
-                  </Button>
-                  
-                  {expandedSteps.has(step.id) && (
-                    <div className="mt-2 bg-gray-50 rounded p-3">
-                      {step.script.map((scriptStep, idx) => (
-                        <div key={idx} className="text-xs mb-2 last:mb-0">
-                          <span className="text-blue-600 font-medium">{idx + 1}.</span>
-                          <span className="ml-2 font-mono">{scriptStep.toolName}</span>
-                          {scriptStep.description && (
-                            <span className="ml-2 text-gray-500">- {scriptStep.description}</span>
-                          )}
-                        </div>
-                      ))}
+                }
+                extra={
+                  <div className="flex gap-2">
+                    <Button
+                      type="primary"
+                      onClick={() => handleExecute(step)}
+                      loading={executingId === step.id}
+                      disabled={executingId !== null || batchExecuting}
+                    >
+                      执行
+                    </Button>
+                    <Button onClick={() => handleEdit(step)} disabled={batchExecuting}>
+                      编辑
+                    </Button>
+                    <Popconfirm
+                      title="确定要删除这个步骤吗？"
+                      onConfirm={() => handleDelete(step.id)}
+                      okText="确定"
+                      cancelText="取消"
+                      disabled={batchExecuting}
+                    >
+                      <Button danger disabled={batchExecuting}>删除</Button>
+                    </Popconfirm>
+                  </div>
+                }
+              >
+                <div className="space-y-2 text-sm">
+                  {/* 执行进度条 */}
+                  {execState?.progress && (
+                    <div className="mb-3">
+                      <Progress
+                        percent={Math.round((execState.progress.step / execState.progress.total) * 100)}
+                        status="active"
+                        size="small"
+                      />
+                      <div className="text-xs text-gray-500 mt-1">
+                        步骤 {execState.progress.step} / {execState.progress.total}
+                      </div>
                     </div>
                   )}
+
+                  {/* 错误信息 */}
+                  {isError && execState.error && (
+                    <Alert
+                      message="执行失败"
+                      description={execState.error}
+                      type="error"
+                      showIcon
+                      className="mb-3"
+                    />
+                  )}
+
+                  <div>
+                    <span className="text-gray-500">原始任务：</span>
+                    <span>{step.originalTask}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">创建时间：</span>
+                    <span>{formatDate(step.createdAt)}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">脚本步骤数：</span>
+                    <span>{step.script.length} 步</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">成功执行次数：</span>
+                    <span className="text-green-600 font-medium">{step.successCount}</span>
+                  </div>
+                  {step.lastExecutedAt && (
+                    <div>
+                      <span className="text-gray-500">最后执行：</span>
+                      <span>{formatDate(step.lastExecutedAt)}</span>
+                    </div>
+                  )}
+
+                  {/* 脚本步骤列表 */}
+                  <div className="mt-3">
+                    <Button
+                      type="link"
+                      size="small"
+                      onClick={() => toggleExpand(step.id)}
+                      className="p-0"
+                    >
+                      {expandedSteps.has(step.id) ? '收起' : '展开'}脚本步骤
+                    </Button>
+
+                    {expandedSteps.has(step.id) && (
+                      <div className="mt-2 bg-gray-50 rounded p-3">
+                        {step.script.map((scriptStep, idx) => (
+                          <div key={idx} className="text-xs mb-2 last:mb-0">
+                            <span className="text-blue-600 font-medium">{idx + 1}.</span>
+                            <span className="ml-2 font-mono">{scriptStep.toolName}</span>
+                            {scriptStep.description && (
+                              <span className="ml-2 text-gray-500">- {scriptStep.description}</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </Card>
-          ))}
+              </Card>
+            );
+          })}
         </div>
       )}
 
