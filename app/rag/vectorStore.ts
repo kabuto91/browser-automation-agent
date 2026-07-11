@@ -4,6 +4,7 @@ import { MemoryVectorStore } from 'langchain/vectorstores/memory';
 import { Document } from '@langchain/core/documents';
 import { getEmbeddings } from './embeddingService';
 import { getAllFixExperiences, FixExperience } from '../utils/fixExperienceDB';
+import { searchByKeyword } from './keywordSearch';
 
 let vectorStore: MemoryVectorStore | null = null;
 let isInitialized = false;
@@ -72,6 +73,15 @@ export async function searchSimilarExperiences(
   problemDescription: string,
   topK: number = 3
 ): Promise<SimilarExperience[]> {
+  const strategy = process.env.RAG_STRATEGY || 'embedding';
+
+  // 降级方案：使用关键词匹配
+  if (strategy === 'keyword') {
+    console.log('🔍 使用关键词匹配策略检索修复经验');
+    return searchByKeyword(problemDescription, topK);
+  }
+
+  // 默认方案：使用向量检索
   if (!vectorStore) {
     await initVectorStore();
   }
@@ -81,7 +91,7 @@ export async function searchSimilarExperiences(
   }
 
   const results = await vectorStore.similaritySearchWithScore(problemDescription, topK);
-  
+
   return results.map(([doc, score]) => ({
     id: doc.metadata.id,
     problemDescription: doc.pageContent,
