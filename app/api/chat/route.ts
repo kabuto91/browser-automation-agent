@@ -7,6 +7,8 @@ import type { ToolCall } from "../../utils/stepLibraryDB";
 import { getBrowserPool, getRawTools } from "../../mcp/mcpClient";
 import { createTestAgentGraph, resumeTest } from "../../agents/testAgentGraph";
 import { HumanMessage } from "@langchain/core/messages";
+import { addFixExperience } from "../../utils/fixExperienceDB";
+import { addExperienceToVectorStore } from "../../rag/vectorStore";
 
 // =============================================
 // 优化点2: 测试结果缓存
@@ -282,7 +284,7 @@ async function runTestAgentWithStream(
   onProgress(JSON.stringify({ step: 0, status: "started", taskId }));
 
   try {
-    const graph = await createTestAgentGraph(tools, mcpClient, taskId, onProgress);
+    const graph = await createTestAgentGraph(tools, mcpClient, taskId, onProgress, testTask);
 
     const stream = await graph.stream(
       {
@@ -292,12 +294,26 @@ async function runTestAgentWithStream(
       { streamMode: "updates" }
     );
 
+    let lastError: string | null = null;
+    let hasError = false;
+    let fixSteps: ToolCall[] = [];
+
     for await (const update of stream) {
       const updateObj = update as any;
       if (updateObj.tools?.script) {
         for (const toolCall of updateObj.tools.script) {
           scriptCollector.addToolCall(toolCall.toolName, toolCall.arguments);
         }
+      }
+      // 收集错误和修复步骤信息
+      if (updateObj.tools?.lastError) {
+        lastError = updateObj.tools.lastError;
+      }
+      if (updateObj.tools?.hasError !== undefined) {
+        hasError = updateObj.tools.hasError;
+      }
+      if (updateObj.tools?.fixSteps) {
+        fixSteps = fixSteps.concat(updateObj.tools.fixSteps);
       }
     }
 
@@ -310,6 +326,26 @@ async function runTestAgentWithStream(
       result: finalResult,
       script
     }));
+
+    // 保存修复经验
+    if (hasError && fixSteps.length > 0 && lastError) {
+      try {
+        const experience = {
+          id: randomUUID(),
+          problemDescription: testTask + '\n错误：' + lastError,
+          errorType: classifyError(lastError),
+          fixSteps: fixSteps,
+          successCount: 0,
+          createdAt: Date.now(),
+        };
+
+        await addFixExperience(experience);
+        await addExperienceToVectorStore(experience);
+        console.log(`💾 已保存修复经验: ${experience.id}`);
+      } catch (error) {
+        console.error('保存修复经验失败:', error);
+      }
+    }
 
     if (testResultCache.size >= MAX_CACHE_SIZE) {
       const firstKey = testResultCache.keys().next().value;
@@ -329,4 +365,11 @@ async function runTestAgentWithStream(
     }));
     return { script: scriptCollector.getScript() };
   }
+}
+
+function classifyError(error: string): string {
+  if (error.includes('timeout')) return 'timeout';
+  if (error.includes('not found') || error.includes('no such element')) return 'element_not_found';
+  if (error.includes('login')) return 'login_required';
+  return 'other';
 }

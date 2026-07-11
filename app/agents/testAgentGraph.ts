@@ -8,6 +8,7 @@ import { getLLMClient, LLMClient } from "../llm/llmClient";
 import { processSnapshot } from "../utils/snapshotProcessor";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import type { ToolCall } from "../utils/stepLibraryDB";
+import { searchSimilarExperiences } from "../rag/vectorStore";
 
 const SYSTEM_PROMPT = `你是一个专业的 Web 自动化测试 Agent。
 任务：根据用户的测试需求，使用浏览器工具完成测试。
@@ -77,13 +78,26 @@ const AgentState = Annotation.Root({
     default: () => [],
   }),
   stepCount: Annotation<number>,
+  lastError: Annotation<string | null>({
+    reducer: (_, b) => b,
+    default: () => null,
+  }),
+  fixSteps: Annotation<ToolCall[]>({
+    reducer: (a, b) => a.concat(b),
+    default: () => [],
+  }),
+  hasError: Annotation<boolean>({
+    reducer: (_, b) => b,
+    default: () => false,
+  }),
 });
 
 export async function createTestAgentGraph(
   mcpTools: Array<{ name: string; description: string; inputSchema: Record<string, unknown> }>,
   mcpClient: Client,
   taskId: string,
-  onProgress: (data: string) => void
+  onProgress: (data: string) => void,
+  testTask: string
 ) {
   const langchainTools = convertMCPToolsToLangChain(mcpTools, mcpClient);
 
@@ -99,6 +113,31 @@ export async function createTestAgentGraph(
   const llmWithTools = llm.bindTools(langchainTools);
   const llmClient = getLLMClient();
 
+  // 检索相似修复经验
+  let experienceContext = '';
+  try {
+    const similarExperiences = await searchSimilarExperiences(testTask, 3);
+    
+    if (similarExperiences.length > 0) {
+      experienceContext = '\n\n## 历史修复经验\n';
+      experienceContext += '以下是一些类似问题的修复经验，供你参考：\n\n';
+      
+      for (const exp of similarExperiences) {
+        experienceContext += `### 问题：${exp.problemDescription}\n`;
+        experienceContext += `错误类型：${exp.errorType}\n`;
+        experienceContext += `修复步骤：\n`;
+        exp.fixSteps.forEach((step, idx) => {
+          experienceContext += `${idx + 1}. ${step.toolName}: ${step.description || ''}\n`;
+        });
+        experienceContext += '\n';
+      }
+      
+      console.log(`📚 注入了 ${similarExperiences.length} 条相似修复经验`);
+    }
+  } catch (error) {
+    console.error('检索修复经验失败:', error);
+  }
+
   const agentNode = async (state: typeof AgentState.State) => {
     const stepCount = state.stepCount + 1;
     onProgress(JSON.stringify({
@@ -107,7 +146,7 @@ export async function createTestAgentGraph(
       content: "Agent 正在思考..."
     }));
 
-    const systemMessage = new SystemMessage(SYSTEM_PROMPT);
+    const systemMessage = new SystemMessage(SYSTEM_PROMPT + experienceContext);
     const response = await llmWithTools.invoke([systemMessage, ...state.messages]);
 
     if (response.tool_calls && response.tool_calls.length > 0) {
@@ -129,6 +168,9 @@ export async function createTestAgentGraph(
 
     const toolMessages: BaseMessage[] = [];
     const newScript: ToolCall[] = [];
+    let currentError: string | null = null;
+    let hasErrorNow = false;
+    const fixSteps: ToolCall[] = [];
 
     for (const toolCall of toolCalls) {
       try {
@@ -150,6 +192,15 @@ export async function createTestAgentGraph(
           processedResult = String(result.content || "");
         }
 
+        // 检测是否包含错误
+        if (processedResult.includes('Error:')) {
+          currentError = processedResult;
+          hasErrorNow = true;
+        } else if (state.hasError) {
+          // 如果之前有错误，现在成功了，记录修复步骤
+          fixSteps.push({ toolName: toolCall.name, arguments: toolCall.args });
+        }
+
         if (toolCall.name === 'browser_snapshot') {
           processedResult = processSnapshot(processedResult);
         }
@@ -168,6 +219,8 @@ export async function createTestAgentGraph(
         }));
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
+        currentError = errorMsg;
+        hasErrorNow = true;
         toolMessages.push(new ToolMessage({
           content: `Error: ${errorMsg}`,
           tool_call_id: toolCall.id!,
@@ -176,7 +229,13 @@ export async function createTestAgentGraph(
       }
     }
 
-    return { messages: toolMessages, script: newScript };
+    return { 
+      messages: toolMessages, 
+      script: newScript,
+      lastError: currentError,
+      hasError: hasErrorNow,
+      fixSteps: fixSteps
+    };
   };
 
   const checkLoginNode = async (state: typeof AgentState.State) => {
