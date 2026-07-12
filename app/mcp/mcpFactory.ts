@@ -106,3 +106,57 @@ export async function destroyMCPClient(instance: MCPClientInstance): Promise<voi
     console.error(`清理用户数据目录 [${instance.instanceId}] 时出错:`, e);
   }
 }
+
+/**
+ * 通过 CDP 连接到已运行的浏览器实例
+ * 不启动新浏览器进程，复用已有浏览器的登录状态和 Cookie
+ */
+export async function createMCPClientWithCDP(cdpEndpoint: string): Promise<MCPClientInstance> {
+  const instanceId = randomUUID().slice(0, 8);
+
+  console.log(`🔧 [${instanceId}] 通过 CDP 连接到浏览器: ${cdpEndpoint}`);
+
+  const transport = new StdioClientTransport({
+    command: "npx",
+    args: ["@playwright/mcp@latest", "--cdp-endpoint", cdpEndpoint],
+  });
+
+  const client = new Client(
+    {
+      name: `playwright-test-agent-cdp-${instanceId}`,
+      version: "1.0.0",
+    },
+    {
+      capabilities: {},
+    }
+  );
+
+  console.log(`🔧 [${instanceId}] 正在连接到 MCP Server (CDP 模式)...`);
+  await client.connect(transport);
+  console.log(`✅ [${instanceId}] Playwright MCP Server (CDP) 连接成功`);
+
+  const pid = (transport as StdioClientTransport & { pid?: number }).pid;
+  console.log(`✅ [${instanceId}] MCP Server 进程 PID: ${pid}`);
+
+  return {
+    client,
+    transport,
+    pid,
+    instanceId,
+    userDataDir: '',
+  };
+}
+
+/**
+ * 销毁外部浏览器 MCP 客户端（仅断开连接，不关闭浏览器进程）
+ */
+export async function destroyExternalMCPClient(instance: MCPClientInstance): Promise<void> {
+  try {
+    await instance.client.close();
+    console.log(`🔌 [${instance.instanceId}] 外部浏览器 MCP Client 已断开`);
+  } catch (e) {
+    console.error(`断开外部 MCP Client [${instance.instanceId}] 时出错:`, e);
+  }
+
+  // 不杀进程，不清理目录 - 浏览器不是我们启动的
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { Drawer, Input, Button, Spin, Alert, Timeline, Modal, message } from 'antd';
+import { Drawer, Input, Button, Spin, Alert, Timeline, Modal, message, Checkbox } from 'antd';
 import { useState, useRef } from 'react';
 import { addStep, ToolCall } from '../utils/stepLibraryDB';
 
@@ -33,6 +33,8 @@ export default function ChatDrawer({ open, onClose }: ChatDrawerProps) {
   const [stepName, setStepName] = useState('');
   const [currentScript, setCurrentScript] = useState<ToolCall[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [useExternalBrowser, setUseExternalBrowser] = useState(false);
+  const [cdpEndpoint, setCdpEndpoint] = useState('http://localhost:9222');
   const currentTaskIdRef = useRef('');
   const streamReaderRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
 
@@ -106,12 +108,17 @@ export default function ChatDrawer({ open, onClose }: ChatDrawerProps) {
     currentTaskIdRef.current = '';
 
     try {
+      const body: any = { input: inputValue };
+      if (useExternalBrowser && cdpEndpoint) {
+        body.cdpEndpoint = cdpEndpoint;
+      }
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ input: inputValue }),
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) {
@@ -297,7 +304,7 @@ export default function ChatDrawer({ open, onClose }: ChatDrawerProps) {
       open={open}
     >
       <div className="flex flex-col h-full">
-        <div className="flex gap-2 mb-6">
+        <div className="flex gap-2 mb-4">
           <TextArea
             value={inputValue}
             onChange={handleChange}
@@ -313,6 +320,24 @@ export default function ChatDrawer({ open, onClose }: ChatDrawerProps) {
           >
             开始测试
           </Button>
+        </div>
+
+        <div className="mb-6">
+          <Checkbox
+            checked={useExternalBrowser}
+            onChange={(e) => setUseExternalBrowser(e.target.checked)}
+          >
+            连接已有浏览器实例
+          </Checkbox>
+          {useExternalBrowser && (
+            <Input
+              value={cdpEndpoint}
+              onChange={(e) => setCdpEndpoint(e.target.value)}
+              placeholder="http://localhost:9222"
+              className="mt-2"
+              disabled={isLoading}
+            />
+          )}
         </div>
 
         {error && (

@@ -4,7 +4,7 @@ import { ScriptCollector } from "../../utils/scriptCollector";
 import { executeScript } from "../../utils/scriptExecutor";
 import { validateScript } from "../../utils/scriptValidator";
 import type { ToolCall } from "../../utils/stepLibraryDB";
-import { getBrowserPool, getRawTools } from "../../mcp/mcpClient";
+import { getBrowserPool, getRawTools, connectExternalBrowser, disconnectExternalBrowser } from "../../mcp/mcpClient";
 import { createTestAgentGraph, resumeTest } from "../../agents/testAgentGraph";
 import { HumanMessage } from "@langchain/core/messages";
 import { addFixExperience } from "../../utils/fixExperienceDB";
